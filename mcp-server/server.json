@@ -1,0 +1,30 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.blipemail/email",
+  "description": "MCP server for Blip disposable email — create inboxes, receive emails, extract OTP codes",
+  "repository": {
+    "url": "https://github.com/blipemail/blip",
+    "source": "github",
+    "subfolder": "mcp-server"
+  },
+  "version": "0.1.1",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@useblip/email",
+      "version": "0.1.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "description": "Your Blip API key",
+          "isRequired": true,
+          "format": "string",
+          "isSecret": true,
+          "name": "BLIP_API_KEY"
+        }
+      ]
+    }
+  ]
+}
