@@ -8,7 +8,7 @@ import io.ktor.server.plugins.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
-fun Route.sessionRoutes(sessionService: SessionService, turso: TursoClient) {
+fun Route.sessionCreateRoutes(sessionService: SessionService) {
     route("/v1/sessions") {
         post {
             val clientIp = call.request.headers["X-Forwarded-For"]?.split(",")?.first()?.trim()
@@ -16,7 +16,11 @@ fun Route.sessionRoutes(sessionService: SessionService, turso: TursoClient) {
             val session = sessionService.createSession(clientIp)
             call.respond(CreateSessionResponse(token = session.token, session = session))
         }
+    }
+}
 
+fun Route.sessionMeRoutes(sessionService: SessionService, turso: TursoClient) {
+    route("/v1/sessions") {
         get("/me") {
             val session = sessionService.extractSession(call.request.headers["Authorization"])
             val userId = session.userId

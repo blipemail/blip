@@ -58,7 +58,7 @@ class SessionRoutesTest {
         coEvery { sessionService.createSession(any()) } returns testSession
 
         setup {
-            sessionRoutes(sessionService, mockk<TursoClient>(relaxed = true))
+            sessionCreateRoutes(sessionService)
         }
 
         val response = client.post("/v1/sessions")
@@ -76,7 +76,7 @@ class SessionRoutesTest {
         coEvery { sessionService.extractSession("Bearer test-token") } returns testSession
 
         setup {
-            sessionRoutes(sessionService, mockk<TursoClient>(relaxed = true))
+            sessionMeRoutes(sessionService, mockk<TursoClient>(relaxed = true))
         }
 
         val response = client.get("/v1/sessions/me") {
@@ -95,7 +95,7 @@ class SessionRoutesTest {
         coEvery { sessionService.extractSession(null) } throws UnauthorizedException("Missing authorization header")
 
         setup {
-            sessionRoutes(sessionService, mockk<TursoClient>(relaxed = true))
+            sessionMeRoutes(sessionService, mockk<TursoClient>(relaxed = true))
         }
 
         val response = client.get("/v1/sessions/me")
