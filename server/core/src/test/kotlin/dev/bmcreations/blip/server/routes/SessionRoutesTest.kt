@@ -4,6 +4,7 @@ import dev.bmcreations.blip.models.ErrorResponse
 import dev.bmcreations.blip.models.SessionDTO
 import dev.bmcreations.blip.models.Tier
 import dev.bmcreations.blip.server.*
+import dev.bmcreations.blip.server.db.TursoClient
 import dev.bmcreations.blip.server.services.SessionService
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -57,7 +58,7 @@ class SessionRoutesTest {
         coEvery { sessionService.createSession(any()) } returns testSession
 
         setup {
-            sessionRoutes(sessionService)
+            sessionRoutes(sessionService, mockk<TursoClient>(relaxed = true))
         }
 
         val response = client.post("/v1/sessions")
@@ -75,7 +76,7 @@ class SessionRoutesTest {
         coEvery { sessionService.extractSession("Bearer test-token") } returns testSession
 
         setup {
-            sessionRoutes(sessionService)
+            sessionRoutes(sessionService, mockk<TursoClient>(relaxed = true))
         }
 
         val response = client.get("/v1/sessions/me") {
@@ -94,7 +95,7 @@ class SessionRoutesTest {
         coEvery { sessionService.extractSession(null) } throws UnauthorizedException("Missing authorization header")
 
         setup {
-            sessionRoutes(sessionService)
+            sessionRoutes(sessionService, mockk<TursoClient>(relaxed = true))
         }
 
         val response = client.get("/v1/sessions/me")

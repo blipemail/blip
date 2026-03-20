@@ -174,7 +174,7 @@ fun Application.coreModule(config: CoreConfig): CoreServices {
 
         // Session creation (tighter rate limit)
         rateLimit(RateLimitName("session-create")) {
-            sessionRoutes(sessionService)
+            sessionRoutes(sessionService, turso)
         }
 
         // Authenticated read endpoints (by token)

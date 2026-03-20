@@ -8,7 +8,9 @@ data class SessionDTO(
     val token: String,
     val tier: Tier,
     val userId: String? = null,
-    val expiresAt: String
+    val expiresAt: String,
+    val hasPro: Boolean = false,
+    val hasAgent: Boolean = false,
 )
 
 @Serializable

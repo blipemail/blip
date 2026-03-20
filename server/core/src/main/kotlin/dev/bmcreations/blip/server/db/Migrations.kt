@@ -181,6 +181,10 @@ object Migrations {
 
         // Seed initial domain
         "INSERT OR IGNORE INTO domains (id, domain, status, created_at, verified_at) VALUES ('seed-bl1p-dev', 'bl1p.dev', 'ACTIVE', datetime('now'), datetime('now'))",
+
+        // Subscription flags on users
+        "ALTER TABLE users ADD COLUMN has_pro INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN has_agent INTEGER NOT NULL DEFAULT 0",
     )
 
     fun run(turso: TursoClient) = runBlocking {
