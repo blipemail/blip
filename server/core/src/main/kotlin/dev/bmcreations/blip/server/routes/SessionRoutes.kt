@@ -22,12 +22,13 @@ fun Route.sessionRoutes(sessionService: SessionService, turso: TursoClient) {
             val userId = session.userId
             val enriched = if (userId != null) {
                 val row = turso.execute(
-                    "SELECT has_pro, has_agent FROM users WHERE id = ?",
+                    "SELECT has_pro, has_agent, stripe_customer_id FROM users WHERE id = ?",
                     listOf(TursoValue.Text(userId))
                 ).firstOrNull()
                 session.copy(
                     hasPro = row?.get("has_pro")?.toIntOrNull() == 1,
                     hasAgent = row?.get("has_agent")?.toIntOrNull() == 1,
+                    stripeCustomerId = row?.get("stripe_customer_id"),
                 )
             } else {
                 session

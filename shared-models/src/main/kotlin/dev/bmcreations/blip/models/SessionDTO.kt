@@ -11,6 +11,7 @@ data class SessionDTO(
     val expiresAt: String,
     val hasPro: Boolean = false,
     val hasAgent: Boolean = false,
+    val stripeCustomerId: String? = null,
 )
 
 @Serializable

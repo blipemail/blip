@@ -185,6 +185,9 @@ object Migrations {
         // Subscription flags on users
         "ALTER TABLE users ADD COLUMN has_pro INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE users ADD COLUMN has_agent INTEGER NOT NULL DEFAULT 0",
+
+        // Stripe customer linkage
+        "ALTER TABLE users ADD COLUMN stripe_customer_id TEXT",
     )
 
     fun run(turso: TursoClient) = runBlocking {
