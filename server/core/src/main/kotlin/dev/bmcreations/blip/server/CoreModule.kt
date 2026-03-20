@@ -164,7 +164,7 @@ fun Application.coreModule(config: CoreConfig): CoreServices {
     cleanupService.startScheduled(this)
 
     routing {
-        healthRoutes()
+        healthRoutes(turso)
 
         // Email ingress from worker — trusted internal traffic, no rate limit
         emailRoutes(emailService, sessionService, inboxService, config.workerSecret, webhookService, forwardingService, extractionService)
