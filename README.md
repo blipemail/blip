@@ -10,7 +10,6 @@ Instant disposable email inboxes. API, CLI, MCP server, and web app.
 - Real-time email delivery via SSE
 - OTP and verification link extraction
 - Webhooks with HMAC-SHA256 signatures and delivery logs
-- Email forwarding rules
 - CLI for terminal workflows
 - MCP server for AI agents
 - Multi-domain support
@@ -22,7 +21,6 @@ blip/
   server/core/      Kotlin/Ktor API server (AGPL-3.0)
   cli/              Kotlin/Clikt CLI
   mcp-server/       TypeScript MCP server (npm: @useblip/email)
-  workers/          Cloudflare Workers (email ingress)
   shared-models/    Shared Kotlin data models
 ```
 
@@ -86,9 +84,6 @@ docker run -p 8080:8080 \
 | `TURSO_AUTH_TOKEN` | No | — | Turso auth token (production) |
 | `WORKER_SECRET` | Yes | `dev-secret` | Shared secret for email ingress worker |
 | `FRONTEND_URL` | No | `http://localhost:4321` | Frontend URL for CORS |
-| `RESEND_API_KEY` | No | — | Resend API key (for forwarding) |
-| `CLOUDFLARE_API_TOKEN` | No | — | Cloudflare API token (domain management) |
-| `CLOUDFLARE_ACCOUNT_ID` | No | — | Cloudflare account ID |
 
 ## Development
 
