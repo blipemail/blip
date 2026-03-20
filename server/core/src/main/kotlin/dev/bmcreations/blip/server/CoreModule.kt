@@ -139,6 +139,13 @@ fun Application.coreModule(config: CoreConfig): CoreServices {
                     ?: call.request.origin.remoteAddress
             }
         }
+        register(RateLimitName("session-create")) {
+            rateLimiter(limit = 5, refillPeriod = 1.minutes)
+            requestKey { call ->
+                call.request.headers["X-Forwarded-For"]?.split(",")?.first()?.trim()
+                    ?: call.request.origin.remoteAddress
+            }
+        }
         register(RateLimitName("authenticated")) {
             rateLimiter(limit = 120, refillPeriod = 1.minutes)
             requestKey { call ->
@@ -165,8 +172,8 @@ fun Application.coreModule(config: CoreConfig): CoreServices {
         // Domain management — admin routes use worker secret
         domainRoutes(domainService, config.workerSecret)
 
-        // Public endpoints (by IP)
-        rateLimit(RateLimitName("public")) {
+        // Session creation (tighter rate limit)
+        rateLimit(RateLimitName("session-create")) {
             sessionRoutes(sessionService)
         }
 

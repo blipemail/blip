@@ -54,7 +54,7 @@ class SessionRoutesTest {
     @Test
     fun `POST v1 sessions creates session and returns 200 with token`() = testApplication {
         val sessionService = mockk<SessionService>(relaxed = true)
-        coEvery { sessionService.createSession() } returns testSession
+        coEvery { sessionService.createSession(any()) } returns testSession
 
         setup {
             sessionRoutes(sessionService)

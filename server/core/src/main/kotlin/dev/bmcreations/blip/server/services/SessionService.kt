@@ -2,6 +2,7 @@ package dev.bmcreations.blip.server.services
 
 import dev.bmcreations.blip.models.SessionDTO
 import dev.bmcreations.blip.models.Tier
+import dev.bmcreations.blip.server.TierLimitException
 import dev.bmcreations.blip.server.UnauthorizedException
 import dev.bmcreations.blip.server.db.TursoClient
 import dev.bmcreations.blip.server.db.TursoValue
@@ -14,7 +15,23 @@ class SessionService(
     private val apiKeyValidator: ApiKeyValidator? = null,
 ) {
 
-    suspend fun createSession(): SessionDTO {
+    companion object {
+        const val MAX_SESSIONS_PER_IP = 10
+    }
+
+    suspend fun createSession(clientIp: String? = null): SessionDTO {
+        // Enforce per-IP active session cap
+        if (clientIp != null) {
+            val countResult = turso.execute(
+                "SELECT COUNT(*) as cnt FROM sessions WHERE fingerprint = ? AND expires_at > ?",
+                listOf(TursoValue.Text(clientIp), TursoValue.Text(Instant.now().toString()))
+            ).firstOrNull()
+            val activeCount = countResult?.get("cnt")?.toLongOrNull() ?: 0
+            if (activeCount >= MAX_SESSIONS_PER_IP) {
+                throw TierLimitException("Too many active sessions")
+            }
+        }
+
         val id = UUID.randomUUID().toString()
         val token = UUID.randomUUID().toString()
         val tier = Tier.FREE
@@ -27,7 +44,7 @@ class SessionService(
                 TursoValue.Text(token),
                 TursoValue.Text(tier.name),
                 TursoValue.Text(expiresAt),
-                TursoValue.Null,
+                if (clientIp != null) TursoValue.Text(clientIp) else TursoValue.Null,
             )
         )
 
