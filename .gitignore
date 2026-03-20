@@ -1,0 +1,6 @@
+build/
+.gradle/
+node_modules/
+dist/
+.env
+*.jar
