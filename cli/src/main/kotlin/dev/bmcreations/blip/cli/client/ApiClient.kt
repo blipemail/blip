@@ -145,6 +145,16 @@ class ApiClient {
         return resp.body<BillingPortalResponse>().url
     }
 
+    suspend fun deleteAccount() {
+        val token = ensureToken()
+        val resp = client.delete("$baseUrl/v1/account") {
+            header("Authorization", "Bearer $token")
+        }
+        if (!resp.status.isSuccess()) {
+            throw RuntimeException("Failed to delete account: ${resp.bodyAsText()}")
+        }
+    }
+
     fun getSseUrl(inboxId: String): String {
         val token = ConfigManager.getToken() ?: ""
         return "$baseUrl/v1/inboxes/$inboxId/sse?token=$token"

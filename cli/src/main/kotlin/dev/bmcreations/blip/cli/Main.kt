@@ -20,5 +20,6 @@ fun main(args: Array<String>) {
         OpenCommand(),
         BillingCommand(),
         WhoamiCommand(),
+        DeleteAccountCommand(),
     ).main(args)
 }
