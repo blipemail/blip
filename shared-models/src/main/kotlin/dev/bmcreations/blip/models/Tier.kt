@@ -43,9 +43,9 @@ enum class Tier(
         maxRepliesPerDay = 10,
     ),
     AGENT(
-        maxAddresses = 10_000,
+        maxAddresses = Int.MAX_VALUE,
         addressTtlSeconds = 3_600,            // 1 hour
-        emailRetentionSeconds = 3_600,        // 1 hour
+        emailRetentionSeconds = 86_400,       // 24 hours
         customSlugs = true,
         webhooksEnabled = true,
         sniperInboxEnabled = false,

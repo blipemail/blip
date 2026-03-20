@@ -147,13 +147,13 @@ fun Application.coreModule(config: CoreConfig): CoreServices {
             }
         }
         register(RateLimitName("authenticated")) {
-            rateLimiter(limit = 120, refillPeriod = 1.minutes)
+            rateLimiter(limit = 600, refillPeriod = 1.minutes)
             requestKey { call ->
                 call.request.headers["Authorization"]?.removePrefix("Bearer ") ?: "anonymous"
             }
         }
         register(RateLimitName("write")) {
-            rateLimiter(limit = 20, refillPeriod = 1.minutes)
+            rateLimiter(limit = 60, refillPeriod = 1.minutes)
             requestKey { call ->
                 call.request.headers["Authorization"]?.removePrefix("Bearer ") ?: "anonymous"
             }
