@@ -82,7 +82,7 @@ docker run -p 8080:8080 \
 | `PORT` | No | `8080` | Server port |
 | `TURSO_URL` | Yes | `http://localhost:8081` | libSQL/Turso database URL |
 | `TURSO_AUTH_TOKEN` | No | — | Turso auth token (production) |
-| `WORKER_SECRET` | Yes | `dev-secret` | Shared secret for email ingress worker |
+| `WORKER_SECRET` | Yes | `dev-secret` | Shared secret for authenticating inbound email delivery |
 | `FRONTEND_URL` | No | `http://localhost:4321` | Frontend URL for CORS |
 
 ## Development
