@@ -1,4 +1,4 @@
-# @blip/email
+# @useblip/email
 
 MCP server for [Blip](https://useblip.email) disposable email. Create inboxes, receive emails, and extract OTP codes — all from your AI agent.
 
@@ -13,7 +13,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "blip": {
       "command": "npx",
-      "args": ["-y", "@blip/email"],
+      "args": ["-y", "@useblip/email"],
       "env": {
         "BLIP_API_KEY": "blip_ak_..."
       }
@@ -25,7 +25,7 @@ Add to your `claude_desktop_config.json`:
 ### Claude Code
 
 ```bash
-claude mcp add blip -- npx -y @blip/email
+claude mcp add blip -- npx -y @useblip/email
 ```
 
 Set your API key:
@@ -39,7 +39,7 @@ export BLIP_API_KEY=blip_ak_...
 Run the server directly:
 
 ```bash
-BLIP_API_KEY=blip_ak_... npx @blip/email
+BLIP_API_KEY=blip_ak_... npx @useblip/email
 ```
 
 ## Getting an API key

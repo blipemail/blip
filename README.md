@@ -21,7 +21,7 @@ Instant disposable email inboxes. API, CLI, MCP server, and web app.
 blip/
   server/core/      Kotlin/Ktor API server (AGPL-3.0)
   cli/              Kotlin/Clikt CLI
-  mcp-server/       TypeScript MCP server (npm: @blip/email)
+  mcp-server/       TypeScript MCP server (npm: @useblip/email)
   workers/          Cloudflare Workers (email ingress)
   shared-models/    Shared Kotlin data models
 ```

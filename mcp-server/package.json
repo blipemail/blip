@@ -1,5 +1,5 @@
 {
-  "name": "@blip/email",
+  "name": "@useblip/email",
   "version": "0.1.0",
   "description": "MCP server for Blip disposable email — create inboxes, receive emails, extract OTP codes",
   "type": "module",
@@ -7,9 +7,13 @@
   "bin": {
     "blip-email": "dist/index.js"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1"
@@ -25,10 +29,16 @@
   },
   "keywords": [
     "mcp",
+    "mcp-server",
+    "model-context-protocol",
     "email",
-    "disposable",
+    "disposable-email",
+    "temporary-email",
     "otp",
     "verification",
-    "ai-agent"
+    "ai-agent",
+    "claude",
+    "cursor",
+    "blip"
   ]
 }
