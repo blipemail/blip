@@ -25,14 +25,14 @@ class EmailRoutesTest {
 
     private val workerSecret = "test-worker-secret"
 
-    private val testSession = SessionDTO(
+    private val testSession = Session(
         id = "s1",
         token = "test-token",
         tier = Tier.FREE,
         expiresAt = "2099-01-01T00:00:00Z"
     )
 
-    private val testInbox = InboxDTO(
+    private val testInbox = Inbox(
         id = "inbox-1",
         address = "swift-fox-42@useblip.email",
         domain = "useblip.email",
@@ -41,7 +41,7 @@ class EmailRoutesTest {
         emailCount = 0
     )
 
-    private val testEmailSummary = EmailSummaryDTO(
+    private val testEmailSummary = EmailSummary(
         id = "email-1",
         from = "sender@example.com",
         subject = "Test Subject",
@@ -49,7 +49,7 @@ class EmailRoutesTest {
         preview = "Hello world"
     )
 
-    private val testEmailDetail = EmailDetailDTO(
+    private val testEmailDetail = EmailDetail(
         id = "email-1",
         inboxId = "inbox-1",
         from = "sender@example.com",

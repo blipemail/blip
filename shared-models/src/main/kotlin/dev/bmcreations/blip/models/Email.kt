@@ -3,7 +3,7 @@ package dev.bmcreations.blip.models
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class EmailSummaryDTO(
+data class EmailSummary(
     val id: String,
     val from: String,
     val subject: String,
@@ -12,7 +12,7 @@ data class EmailSummaryDTO(
 )
 
 @Serializable
-data class EmailDetailDTO(
+data class EmailDetail(
     val id: String,
     val inboxId: String,
     val from: String,
@@ -22,12 +22,12 @@ data class EmailDetailDTO(
     val htmlBody: String? = null,
     val headers: Map<String, String> = emptyMap(),
     val receivedAt: String,
-    val attachments: List<AttachmentDTO> = emptyList(),
-    val replies: List<ReplyDTO> = emptyList()
+    val attachments: List<Attachment> = emptyList(),
+    val replies: List<Reply> = emptyList()
 )
 
 @Serializable
-data class ReplyDTO(
+data class Reply(
     val id: String,
     val body: String,
     val status: String,
@@ -35,7 +35,7 @@ data class ReplyDTO(
 )
 
 @Serializable
-data class AttachmentDTO(
+data class Attachment(
     val name: String,
     val contentType: String,
     val size: Long
@@ -71,7 +71,7 @@ data class ReplyResponse(
 )
 
 @Serializable
-data class ForwardingRuleDTO(
+data class ForwardingRule(
     val id: String,
     val inboxId: String,
     val forwardToEmail: String,
@@ -85,7 +85,7 @@ data class CreateForwardingRuleRequest(
 
 @Serializable
 data class CreateForwardingRuleResponse(
-    val rule: ForwardingRuleDTO,
+    val rule: ForwardingRule,
 )
 
 @Serializable

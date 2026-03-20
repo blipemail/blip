@@ -22,21 +22,21 @@ class ForwardingRoutesTest {
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
-    private val freeSession = SessionDTO(
+    private val freeSession = Session(
         id = "s1",
         token = "free-token",
         tier = Tier.FREE,
         expiresAt = "2099-01-01T00:00:00Z"
     )
 
-    private val proSession = SessionDTO(
+    private val proSession = Session(
         id = "s2",
         token = "pro-token",
         tier = Tier.PRO,
         expiresAt = "2099-01-01T00:00:00Z"
     )
 
-    private val testRule = ForwardingRuleDTO(
+    private val testRule = ForwardingRule(
         id = "rule-1",
         inboxId = "inbox-1",
         forwardToEmail = "forward@example.com",

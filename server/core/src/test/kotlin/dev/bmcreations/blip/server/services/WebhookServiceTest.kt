@@ -393,7 +393,7 @@ class WebhookServiceTest {
 
     @Test
     fun `shouldRetry returns true when attempts are below max`() {
-        val delivery = WebhookDeliveryDTO(
+        val delivery = WebhookDelivery(
             id = "d-1",
             webhookId = "wh-1",
             emailId = "e-1",
@@ -407,7 +407,7 @@ class WebhookServiceTest {
 
     @Test
     fun `shouldRetry returns true at 2 attempts`() {
-        val delivery = WebhookDeliveryDTO(
+        val delivery = WebhookDelivery(
             id = "d-1",
             webhookId = "wh-1",
             emailId = "e-1",
@@ -421,7 +421,7 @@ class WebhookServiceTest {
 
     @Test
     fun `shouldRetry returns false when max attempts reached`() {
-        val delivery = WebhookDeliveryDTO(
+        val delivery = WebhookDelivery(
             id = "d-1",
             webhookId = "wh-1",
             emailId = "e-1",
@@ -435,7 +435,7 @@ class WebhookServiceTest {
 
     @Test
     fun `shouldRetry returns false for successful deliveries`() {
-        val delivery = WebhookDeliveryDTO(
+        val delivery = WebhookDelivery(
             id = "d-1",
             webhookId = "wh-1",
             emailId = "e-1",

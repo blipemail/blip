@@ -3,7 +3,7 @@ package dev.bmcreations.blip.models
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class WebhookDTO(
+data class Webhook(
     val id: String,
     val url: String,
     val secret: String,
@@ -20,7 +20,7 @@ data class CreateWebhookRequest(
 
 @Serializable
 data class CreateWebhookResponse(
-    val webhook: WebhookDTO,
+    val webhook: Webhook,
 )
 
 @Serializable
@@ -42,7 +42,7 @@ data class WebhookAttachmentMeta(
 )
 
 @Serializable
-data class WebhookDeliveryDTO(
+data class WebhookDelivery(
     val id: String,
     val webhookId: String,
     val emailId: String,

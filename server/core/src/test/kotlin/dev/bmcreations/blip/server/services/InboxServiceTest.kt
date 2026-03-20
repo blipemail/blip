@@ -1,7 +1,7 @@
 package dev.bmcreations.blip.server.services
 
 import dev.bmcreations.blip.models.CreateInboxRequest
-import dev.bmcreations.blip.models.InboxDTO
+import dev.bmcreations.blip.models.Inbox
 import dev.bmcreations.blip.models.SniperWindow
 import dev.bmcreations.blip.models.Tier
 import dev.bmcreations.blip.server.ForbiddenException
@@ -473,7 +473,7 @@ class InboxServiceTest {
         val pastOpens = Instant.now().minusSeconds(3600).toString()
         val pastCloses = Instant.now().minusSeconds(1800).toString()
 
-        val inbox = InboxDTO(
+        val inbox = Inbox(
             id = "inbox-sniper",
             address = "sniper@useblip.email",
             domain = "useblip.email",
@@ -494,7 +494,7 @@ class InboxServiceTest {
         val opens = Instant.now().minusSeconds(300).toString()
         val closes = Instant.now().plusSeconds(300).toString()
 
-        val inbox = InboxDTO(
+        val inbox = Inbox(
             id = "inbox-sniper",
             address = "sniper@useblip.email",
             domain = "useblip.email",
@@ -511,7 +511,7 @@ class InboxServiceTest {
         val opens = Instant.now().minusSeconds(300).toString()
         val closes = Instant.now().plusSeconds(300).toString()
 
-        val inbox = InboxDTO(
+        val inbox = Inbox(
             id = "inbox-sniper",
             address = "sniper@useblip.email",
             domain = "useblip.email",
@@ -525,7 +525,7 @@ class InboxServiceTest {
 
     @Test
     fun `isSniperWindowOpen returns true for non-sniper inbox`() {
-        val inbox = InboxDTO(
+        val inbox = Inbox(
             id = "inbox-normal",
             address = "normal@useblip.email",
             domain = "useblip.email",

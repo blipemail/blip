@@ -73,7 +73,7 @@ class WebhookService(
         }
     }
 
-    suspend fun createWebhook(sessionId: String, request: CreateWebhookRequest): WebhookDTO {
+    suspend fun createWebhook(sessionId: String, request: CreateWebhookRequest): Webhook {
         validateWebhookUrl(request.url)
         val id = UUID.randomUUID().toString()
         val secret = UUID.randomUUID().toString() + UUID.randomUUID().toString()
@@ -92,7 +92,7 @@ class WebhookService(
             )
         )
 
-        return WebhookDTO(
+        return Webhook(
             id = id,
             url = request.url,
             secret = secret,
@@ -102,12 +102,12 @@ class WebhookService(
         )
     }
 
-    suspend fun listWebhooks(sessionId: String): List<WebhookDTO> {
+    suspend fun listWebhooks(sessionId: String): List<Webhook> {
         val result = turso.execute(
             "SELECT id, url, secret, inbox_id, created_at, enabled FROM webhooks WHERE session_id = ?",
             listOf(TursoValue.Text(sessionId))
         )
-        return result.toMaps().map { it.toWebhookDTO() }
+        return result.toMaps().map { it.toWebhook() }
     }
 
     suspend fun deleteWebhook(webhookId: String, sessionId: String) {
@@ -126,7 +126,7 @@ class WebhookService(
         )
     }
 
-    suspend fun getWebhooksForInbox(inboxId: String, sessionId: String): List<WebhookDTO> {
+    suspend fun getWebhooksForInbox(inboxId: String, sessionId: String): List<Webhook> {
         val result = turso.execute(
             """
             SELECT id, url, secret, inbox_id, created_at, enabled FROM webhooks
@@ -134,7 +134,7 @@ class WebhookService(
             """.trimIndent(),
             listOf(TursoValue.Text(sessionId), TursoValue.Text(inboxId))
         )
-        return result.toMaps().map { it.toWebhookDTO() }
+        return result.toMaps().map { it.toWebhook() }
     }
 
     suspend fun toggleWebhook(webhookId: String, sessionId: String, enabled: Boolean) {
@@ -153,7 +153,7 @@ class WebhookService(
         )
     }
 
-    fun shouldRetry(delivery: WebhookDeliveryDTO): Boolean {
+    fun shouldRetry(delivery: WebhookDelivery): Boolean {
         if (delivery.status == DeliveryStatus.SUCCESS) return false
         return delivery.attempts < MAX_RETRY_ATTEMPTS
     }
@@ -221,7 +221,7 @@ class WebhookService(
         )
     }
 
-    suspend fun getDeliveryLog(webhookId: String): List<WebhookDeliveryDTO> {
+    suspend fun getDeliveryLog(webhookId: String): List<WebhookDelivery> {
         val result = turso.execute(
             """
             SELECT id, webhook_id, email_id, status_code, attempts, next_retry_at, completed_at, status
@@ -230,7 +230,7 @@ class WebhookService(
             listOf(TursoValue.Text(webhookId))
         )
         return result.toMaps().map { row ->
-            WebhookDeliveryDTO(
+            WebhookDelivery(
                 id = row["id"]!!,
                 webhookId = row["webhook_id"]!!,
                 emailId = row["email_id"]!!,
@@ -414,8 +414,8 @@ class WebhookService(
         }
     }
 
-    private fun Map<String, String?>.toWebhookDTO(): WebhookDTO {
-        return WebhookDTO(
+    private fun Map<String, String?>.toWebhook(): Webhook {
+        return Webhook(
             id = this["id"]!!,
             url = this["url"]!!,
             secret = this["secret"]!!,

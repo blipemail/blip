@@ -21,21 +21,21 @@ class InboxRoutesTest {
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
-    private val testSession = SessionDTO(
+    private val testSession = Session(
         id = "s1",
         token = "test-token",
         tier = Tier.FREE,
         expiresAt = "2099-01-01T00:00:00Z"
     )
 
-    private val proSession = SessionDTO(
+    private val proSession = Session(
         id = "s2",
         token = "pro-token",
         tier = Tier.PRO,
         expiresAt = "2099-01-01T00:00:00Z"
     )
 
-    private val testInbox = InboxDTO(
+    private val testInbox = Inbox(
         id = "inbox-1",
         address = "swift-fox-42@useblip.email",
         domain = "useblip.email",
@@ -44,10 +44,10 @@ class InboxRoutesTest {
         emailCount = 0
     )
 
-    private val testInboxDetail = InboxDetailDTO(
+    private val testInboxDetail = InboxDetail(
         inbox = testInbox,
         emails = listOf(
-            EmailSummaryDTO(
+            EmailSummary(
                 id = "email-1",
                 from = "sender@example.com",
                 subject = "Hello",

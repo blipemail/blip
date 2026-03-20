@@ -1,6 +1,6 @@
 package dev.bmcreations.blip.server.sse
 
-import dev.bmcreations.blip.models.EmailSummaryDTO
+import dev.bmcreations.blip.models.EmailSummary
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.take
@@ -18,14 +18,14 @@ class SseManagerTest {
         sseManager = SseManager()
     }
 
-    private fun email(id: String = "e1", subject: String = "Test") = EmailSummaryDTO(
+    private fun email(id: String = "e1", subject: String = "Test") = EmailSummary(
         id = id, from = "a@b.com", subject = subject,
         receivedAt = "2026-01-01T00:00:00Z", preview = "preview"
     )
 
     @Test
     fun `subscribe receives published emails`() = runTest {
-        val received = mutableListOf<EmailSummaryDTO>()
+        val received = mutableListOf<EmailSummary>()
         val job = launch(UnconfinedTestDispatcher()) {
             sseManager.subscribe("inbox-1").take(2).toList(received)
         }
@@ -40,7 +40,7 @@ class SseManagerTest {
 
     @Test
     fun `publish to one inbox does not leak to another`() = runTest {
-        val received = mutableListOf<EmailSummaryDTO>()
+        val received = mutableListOf<EmailSummary>()
         val job = launch(UnconfinedTestDispatcher()) {
             sseManager.subscribe("inbox-A").take(1).toList(received)
         }
@@ -67,8 +67,8 @@ class SseManagerTest {
 
     @Test
     fun `multiple subscribers on same inbox all receive`() = runTest {
-        val received1 = mutableListOf<EmailSummaryDTO>()
-        val received2 = mutableListOf<EmailSummaryDTO>()
+        val received1 = mutableListOf<EmailSummary>()
+        val received2 = mutableListOf<EmailSummary>()
         val job1 = launch(UnconfinedTestDispatcher()) {
             sseManager.subscribe("inbox-1").take(1).toList(received1)
         }

@@ -1,6 +1,6 @@
 package dev.bmcreations.blip.server.services
 
-import dev.bmcreations.blip.models.SessionDTO
+import dev.bmcreations.blip.models.Session
 import dev.bmcreations.blip.models.Tier
 import dev.bmcreations.blip.server.TierLimitException
 import dev.bmcreations.blip.server.UnauthorizedException
@@ -19,7 +19,7 @@ class SessionService(
         const val MAX_SESSIONS_PER_IP = 10
     }
 
-    suspend fun createSession(clientIp: String? = null): SessionDTO {
+    suspend fun createSession(clientIp: String? = null): Session {
         // Enforce per-IP active session cap
         if (clientIp != null) {
             val countResult = turso.execute(
@@ -48,7 +48,7 @@ class SessionService(
             )
         )
 
-        return SessionDTO(
+        return Session(
             id = id,
             token = token,
             tier = tier,
@@ -56,7 +56,7 @@ class SessionService(
         )
     }
 
-    suspend fun getSessionByToken(token: String): SessionDTO {
+    suspend fun getSessionByToken(token: String): Session {
         val row = turso.execute(
             "SELECT id, token, tier, user_id, expires_at FROM sessions WHERE token = ?",
             listOf(TursoValue.Text(token))
@@ -67,7 +67,7 @@ class SessionService(
             throw UnauthorizedException("Session expired")
         }
 
-        return SessionDTO(
+        return Session(
             id = row["id"]!!,
             token = row["token"]!!,
             tier = Tier.valueOf(row["tier"] ?: "FREE"),
@@ -76,13 +76,13 @@ class SessionService(
         )
     }
 
-    suspend fun getSessionById(sessionId: String): SessionDTO? {
+    suspend fun getSessionById(sessionId: String): Session? {
         val row = turso.execute(
             "SELECT id, token, tier, user_id, expires_at FROM sessions WHERE id = ?",
             listOf(TursoValue.Text(sessionId))
         ).firstOrNull() ?: return null
 
-        return SessionDTO(
+        return Session(
             id = row["id"]!!,
             token = row["token"]!!,
             tier = Tier.valueOf(row["tier"] ?: "FREE"),
@@ -91,7 +91,7 @@ class SessionService(
         )
     }
 
-    suspend fun extractSession(authHeader: String?): SessionDTO {
+    suspend fun extractSession(authHeader: String?): Session {
         val token = authHeader?.removePrefix("Bearer ")?.trim()
             ?: throw UnauthorizedException("Missing authorization header")
 

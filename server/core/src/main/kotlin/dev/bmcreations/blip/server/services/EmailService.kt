@@ -29,7 +29,7 @@ class EmailService(
         request: IngressEmailRequest,
         stripAttachments: Boolean = false,
         maxAttachmentBytes: Long = 0,
-    ): EmailSummaryDTO {
+    ): EmailSummary {
         val emailId = UUID.randomUUID().toString()
         val now = Instant.now().toString()
         val headersJson = Json.encodeToString(request.headers)
@@ -97,7 +97,7 @@ class EmailService(
             }
         }
 
-        val summary = EmailSummaryDTO(
+        val summary = EmailSummary(
             id = emailId,
             from = request.from,
             subject = request.subject,
@@ -111,7 +111,7 @@ class EmailService(
         return summary
     }
 
-    suspend fun getEmail(emailId: String): EmailDetailDTO {
+    suspend fun getEmail(emailId: String): EmailDetail {
         val row = turso.execute(
             "SELECT * FROM emails WHERE id = ?",
             listOf(TursoValue.Text(emailId))
@@ -129,7 +129,7 @@ class EmailService(
         )
 
         val attachments = attachmentRows.toMaps().map { att ->
-            AttachmentDTO(
+            Attachment(
                 name = att["name"]!!,
                 contentType = att["content_type"]!!,
                 size = att["size"]?.toLongOrNull() ?: 0,
@@ -154,7 +154,7 @@ class EmailService(
             listOf(TursoValue.Text(emailId))
         )
         val replies = replyRows.toMaps().map { r ->
-            ReplyDTO(
+            Reply(
                 id = r["id"]!!,
                 body = r["body"]!!,
                 status = r["status"] ?: "pending",
@@ -162,7 +162,7 @@ class EmailService(
             )
         }
 
-        return EmailDetailDTO(
+        return EmailDetail(
             id = row["id"]!!,
             inboxId = row["inbox_id"]!!,
             from = row["from_addr"] ?: "",
@@ -196,7 +196,7 @@ class EmailService(
         return contentType to decrypted
     }
 
-    suspend fun getLatestEmail(inboxId: String): EmailDetailDTO? {
+    suspend fun getLatestEmail(inboxId: String): EmailDetail? {
         val row = turso.execute(
             "SELECT id FROM emails WHERE inbox_id = ? ORDER BY received_at DESC LIMIT 1",
             listOf(TursoValue.Text(inboxId))

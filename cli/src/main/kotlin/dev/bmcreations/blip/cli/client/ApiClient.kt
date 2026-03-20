@@ -47,7 +47,7 @@ class ApiClient {
         return result.token
     }
 
-    suspend fun createInbox(request: CreateInboxRequest = CreateInboxRequest()): InboxDTO {
+    suspend fun createInbox(request: CreateInboxRequest = CreateInboxRequest()): Inbox {
         val token = ensureToken()
         val resp = client.post("$baseUrl/v1/inboxes") {
             header("Authorization", "Bearer $token")
@@ -60,7 +60,7 @@ class ApiClient {
         return resp.body<CreateInboxResponse>().inbox
     }
 
-    suspend fun listInboxes(): List<InboxDTO> {
+    suspend fun listInboxes(): List<Inbox> {
         val token = ensureToken()
         val resp = client.get("$baseUrl/v1/inboxes") {
             header("Authorization", "Bearer $token")
@@ -68,10 +68,10 @@ class ApiClient {
         if (!resp.status.isSuccess()) {
             throw RuntimeException("Failed to list inboxes: ${resp.bodyAsText()}")
         }
-        return resp.body<List<InboxDTO>>()
+        return resp.body<List<Inbox>>()
     }
 
-    suspend fun getInbox(id: String): InboxDetailDTO {
+    suspend fun getInbox(id: String): InboxDetail {
         val token = ensureToken()
         val resp = client.get("$baseUrl/v1/inboxes/$id") {
             header("Authorization", "Bearer $token")
@@ -79,10 +79,10 @@ class ApiClient {
         if (!resp.status.isSuccess()) {
             throw RuntimeException("Inbox not found: $id")
         }
-        return resp.body<InboxDetailDTO>()
+        return resp.body<InboxDetail>()
     }
 
-    suspend fun getEmail(id: String): EmailDetailDTO {
+    suspend fun getEmail(id: String): EmailDetail {
         val token = ensureToken()
         val resp = client.get("$baseUrl/v1/emails/$id") {
             header("Authorization", "Bearer $token")
@@ -90,15 +90,15 @@ class ApiClient {
         if (!resp.status.isSuccess()) {
             throw RuntimeException("Email not found: $id")
         }
-        return resp.body<EmailDetailDTO>()
+        return resp.body<EmailDetail>()
     }
 
-    suspend fun getSession(): SessionDTO {
+    suspend fun getSession(): Session {
         val token = ensureToken()
         val resp = client.get("$baseUrl/v1/sessions/me") {
             header("Authorization", "Bearer $token")
         }
-        return resp.body<SessionDTO>()
+        return resp.body<Session>()
     }
 
     suspend fun createDeviceCode(): DeviceCodeResponse {

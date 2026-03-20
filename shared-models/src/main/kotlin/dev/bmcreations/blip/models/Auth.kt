@@ -15,7 +15,7 @@ data class DeviceCodeResponse(
 data class DeviceCodePollResponse(
     val status: DeviceCodeStatus,
     val token: String? = null,
-    val session: SessionDTO? = null,
+    val session: Session? = null,
 )
 
 @Serializable

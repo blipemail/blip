@@ -1,6 +1,6 @@
 package dev.bmcreations.blip.cli.client
 
-import dev.bmcreations.blip.models.EmailSummaryDTO
+import dev.bmcreations.blip.models.EmailSummary
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.Json
 import java.io.BufferedReader
@@ -10,7 +10,7 @@ import java.net.URI
 
 class SseClient(
     private val url: String,
-    private val onEmail: (EmailSummaryDTO) -> Unit,
+    private val onEmail: (EmailSummary) -> Unit,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
     private var job: Job? = null
@@ -37,7 +37,7 @@ class SseClient(
                         line.isEmpty() && data.isNotEmpty() -> {
                             if (eventType == "email") {
                                 try {
-                                    val email = json.decodeFromString<EmailSummaryDTO>(data)
+                                    val email = json.decodeFromString<EmailSummary>(data)
                                     onEmail(email)
                                 } catch (e: Exception) {
                                     // Skip malformed events

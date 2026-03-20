@@ -1,7 +1,7 @@
 package dev.bmcreations.blip.server.routes
 
 import dev.bmcreations.blip.models.ErrorResponse
-import dev.bmcreations.blip.models.SessionDTO
+import dev.bmcreations.blip.models.Session
 import dev.bmcreations.blip.models.Tier
 import dev.bmcreations.blip.server.*
 import dev.bmcreations.blip.server.db.TursoClient
@@ -23,7 +23,7 @@ class SessionRoutesTest {
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
-    private val testSession = SessionDTO(
+    private val testSession = Session(
         id = "s1",
         token = "test-token",
         tier = Tier.FREE,

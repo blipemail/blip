@@ -54,13 +54,13 @@ class InboxService(
         return "$adj-$noun-$num"
     }
 
-    suspend fun createInbox(sessionId: String, tier: Tier, request: CreateInboxRequest = CreateInboxRequest(), userId: String? = null): InboxDTO {
+    suspend fun createInbox(sessionId: String, tier: Tier, request: CreateInboxRequest = CreateInboxRequest(), userId: String? = null): Inbox {
         val lockKey = userId ?: sessionId
         val mutex = inboxCreationLocks.getOrPut(lockKey) { Mutex() }
         return mutex.withLock { createInboxInternal(sessionId, tier, request, userId) }
     }
 
-    private suspend fun createInboxInternal(sessionId: String, tier: Tier, request: CreateInboxRequest, userId: String?): InboxDTO {
+    private suspend fun createInboxInternal(sessionId: String, tier: Tier, request: CreateInboxRequest, userId: String?): Inbox {
         // Check tier limits — count by user if authenticated, else by session
         val count = if (userId != null) {
             turso.execute(
@@ -175,7 +175,7 @@ class InboxService(
             )
         }
 
-        return InboxDTO(
+        return Inbox(
             id = id,
             address = address,
             domain = domain,
@@ -185,7 +185,7 @@ class InboxService(
         )
     }
 
-    suspend fun listInboxes(sessionId: String, userId: String? = null): List<InboxDTO> {
+    suspend fun listInboxes(sessionId: String, userId: String? = null): List<Inbox> {
         val result = if (userId != null) {
             turso.execute(
                 """
@@ -212,10 +212,10 @@ class InboxService(
             )
         }
 
-        return result.toMaps().map { it.toInboxDTO() }
+        return result.toMaps().map { it.toInbox() }
     }
 
-    suspend fun getInbox(inboxId: String, sessionId: String, userId: String? = null): InboxDetailDTO {
+    suspend fun getInbox(inboxId: String, sessionId: String, userId: String? = null): InboxDetail {
         val inboxRow = turso.execute(
             """
             SELECT i.id, i.address, i.domain, i.session_id, i.user_id, i.created_at, i.expires_at,
@@ -231,7 +231,7 @@ class InboxService(
             throw ForbiddenException("Access denied")
         }
 
-        val inbox = inboxRow.toInboxDTO()
+        val inbox = inboxRow.toInbox()
 
         val emailRows = turso.execute(
             """
@@ -242,7 +242,7 @@ class InboxService(
         )
 
         val emails = emailRows.toMaps().map { row ->
-            EmailSummaryDTO(
+            EmailSummary(
                 id = row["id"]!!,
                 from = row["from_addr"] ?: "",
                 subject = row["subject"] ?: "",
@@ -251,7 +251,7 @@ class InboxService(
             )
         }
 
-        return InboxDetailDTO(inbox = inbox, emails = emails)
+        return InboxDetail(inbox = inbox, emails = emails)
     }
 
     suspend fun getEncryptionKey(inboxId: String): String? {
@@ -262,7 +262,7 @@ class InboxService(
         return row["encryption_key"]
     }
 
-    suspend fun getInboxByAddress(address: String): InboxDTO? {
+    suspend fun getInboxByAddress(address: String): Inbox? {
         val row = turso.execute(
             """
             SELECT id, address, domain, session_id, created_at, expires_at,
@@ -272,14 +272,14 @@ class InboxService(
             listOf(TursoValue.Text(address))
         ).firstOrNull() ?: return null
 
-        return row.toInboxDTO()
+        return row.toInbox()
     }
 
     /**
      * Check if a sniper inbox is currently accepting emails.
      * Returns true if the inbox has no sniper window, or if the window is currently open.
      */
-    fun isSniperWindowOpen(inbox: InboxDTO): Boolean {
+    fun isSniperWindowOpen(inbox: Inbox): Boolean {
         val window = inbox.sniperWindow ?: return true
         if (window.sealed) return false
         val now = Instant.now()
@@ -329,7 +329,7 @@ class InboxService(
         return row["session_id"]
     }
 
-    private fun Map<String, String?>.toInboxDTO(): InboxDTO {
+    private fun Map<String, String?>.toInbox(): Inbox {
         val sniperOpens = this["sniper_opens_at"]
         val sniperCloses = this["sniper_closes_at"]
         val sniperSealed = this["sniper_sealed"] == "1"
@@ -342,7 +342,7 @@ class InboxService(
             )
         } else null
 
-        return InboxDTO(
+        return Inbox(
             id = this["id"]!!,
             address = this["address"]!!,
             domain = this["domain"] ?: "bl1p.dev",

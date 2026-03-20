@@ -3,7 +3,7 @@ package dev.bmcreations.blip.models
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class SessionDTO(
+data class Session(
     val id: String,
     val token: String,
     val tier: Tier,
@@ -17,5 +17,5 @@ data class SessionDTO(
 @Serializable
 data class CreateSessionResponse(
     val token: String,
-    val session: SessionDTO
+    val session: Session
 )

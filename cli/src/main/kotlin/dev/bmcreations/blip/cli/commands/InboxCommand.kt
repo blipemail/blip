@@ -9,8 +9,8 @@ import com.github.ajalt.clikt.parameters.options.option
 import dev.bmcreations.blip.cli.client.ApiClient
 import dev.bmcreations.blip.cli.client.SseClient
 import dev.bmcreations.blip.cli.config.ConfigManager
-import dev.bmcreations.blip.models.EmailDetailDTO
-import dev.bmcreations.blip.models.EmailSummaryDTO
+import dev.bmcreations.blip.models.EmailDetail
+import dev.bmcreations.blip.models.EmailSummary
 import kotlinx.coroutines.*
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -45,7 +45,7 @@ class InboxCommand : CliktCommand(name = "inbox") {
                 echo("Inbox: ${detail.inbox.address}")
 
                 // Tracked emails list — numbered for REPL selection
-                val emails = mutableListOf<EmailSummaryDTO>()
+                val emails = mutableListOf<EmailSummary>()
                 emails.addAll(detail.emails)
 
                 if (emails.isNotEmpty()) {
@@ -138,17 +138,17 @@ class InboxCommand : CliktCommand(name = "inbox") {
         }
     }
 
-    private fun printEmailList(emails: List<EmailSummaryDTO>) {
+    private fun printEmailList(emails: List<EmailSummary>) {
         for ((i, email) in emails.withIndex()) {
             echo("  #${i + 1}  ${email.from} — ${email.subject}")
         }
     }
 
-    private fun getEmail(emails: List<EmailSummaryDTO>, idx: Int): EmailSummaryDTO? {
+    private fun getEmail(emails: List<EmailSummary>, idx: Int): EmailSummary? {
         return emails.getOrNull(idx - 1)
     }
 
-    private suspend fun readEmail(client: ApiClient, summary: EmailSummaryDTO) {
+    private suspend fun readEmail(client: ApiClient, summary: EmailSummary) {
         try {
             val email = client.getEmail(summary.id)
             echo("")
@@ -171,7 +171,7 @@ class InboxCommand : CliktCommand(name = "inbox") {
         }
     }
 
-    private suspend fun replyToEmail(client: ApiClient, reader: BufferedReader, summary: EmailSummaryDTO) {
+    private suspend fun replyToEmail(client: ApiClient, reader: BufferedReader, summary: EmailSummary) {
         echo("")
         echo("  Replying to: ${summary.from} — ${summary.subject}")
         echo("  Type your reply. Enter a blank line to send, or /cancel to abort.")

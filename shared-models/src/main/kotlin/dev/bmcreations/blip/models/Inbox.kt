@@ -3,7 +3,7 @@ package dev.bmcreations.blip.models
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class InboxDTO(
+data class Inbox(
     val id: String,
     val address: String,
     val domain: String,
@@ -21,9 +21,9 @@ data class SniperWindow(
 )
 
 @Serializable
-data class InboxDetailDTO(
-    val inbox: InboxDTO,
-    val emails: List<EmailSummaryDTO> = emptyList(),
+data class InboxDetail(
+    val inbox: Inbox,
+    val emails: List<EmailSummary> = emptyList(),
 )
 
 @Serializable
@@ -35,5 +35,5 @@ data class CreateInboxRequest(
 
 @Serializable
 data class CreateInboxResponse(
-    val inbox: InboxDTO,
+    val inbox: Inbox,
 )

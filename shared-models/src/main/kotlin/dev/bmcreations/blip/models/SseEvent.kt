@@ -5,5 +5,5 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class SseEvent(
     val type: String,
-    val data: EmailSummaryDTO
+    val data: EmailSummary
 )

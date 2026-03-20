@@ -1,6 +1,6 @@
 package dev.bmcreations.blip.server.services
 
-import dev.bmcreations.blip.models.EmailSummaryDTO
+import dev.bmcreations.blip.models.EmailSummary
 import dev.bmcreations.blip.models.IngressAttachment
 import dev.bmcreations.blip.models.IngressEmailRequest
 import dev.bmcreations.blip.server.NotFoundException
@@ -106,7 +106,7 @@ class EmailServiceTest {
         val summary = service.ingestEmail(inboxId, request)
 
         coVerify {
-            sseManager.publish(inboxId, match<EmailSummaryDTO> { it.id == summary.id })
+            sseManager.publish(inboxId, match<EmailSummary> { it.id == summary.id })
         }
     }
 

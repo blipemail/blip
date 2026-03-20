@@ -1,6 +1,6 @@
 package dev.bmcreations.blip.server.services
 
-import dev.bmcreations.blip.models.ForwardingRuleDTO
+import dev.bmcreations.blip.models.ForwardingRule
 import dev.bmcreations.blip.server.NotFoundException
 import dev.bmcreations.blip.server.ForbiddenException
 import dev.bmcreations.blip.server.TierLimitException
@@ -37,7 +37,7 @@ class ForwardingService(
         sessionId: String,
         forwardToEmail: String,
         maxRules: Int,
-    ): ForwardingRuleDTO {
+    ): ForwardingRule {
         require(EMAIL_REGEX.matches(forwardToEmail)) { "Invalid email address" }
 
         val countResult = turso.execute(
@@ -63,7 +63,7 @@ class ForwardingService(
             )
         )
 
-        return ForwardingRuleDTO(
+        return ForwardingRule(
             id = id,
             inboxId = inboxId,
             forwardToEmail = forwardToEmail,
@@ -71,13 +71,13 @@ class ForwardingService(
         )
     }
 
-    suspend fun listRules(inboxId: String): List<ForwardingRuleDTO> {
+    suspend fun listRules(inboxId: String): List<ForwardingRule> {
         val result = turso.execute(
             "SELECT id, inbox_id, forward_to_email, created_at FROM forwarding_rules WHERE inbox_id = ?",
             listOf(TursoValue.Text(inboxId))
         )
         return result.toMaps().map { row ->
-            ForwardingRuleDTO(
+            ForwardingRule(
                 id = row["id"]!!,
                 inboxId = row["inbox_id"]!!,
                 forwardToEmail = row["forward_to_email"]!!,
@@ -102,7 +102,7 @@ class ForwardingService(
         )
     }
 
-    suspend fun getRulesForInbox(inboxId: String): List<ForwardingRuleDTO> {
+    suspend fun getRulesForInbox(inboxId: String): List<ForwardingRule> {
         return listRules(inboxId)
     }
 

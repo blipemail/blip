@@ -1,7 +1,7 @@
 package dev.bmcreations.blip.server.services
 
 import dev.bmcreations.blip.models.DnsRecord
-import dev.bmcreations.blip.models.DomainDTO
+import dev.bmcreations.blip.models.Domain
 import dev.bmcreations.blip.models.DomainStatus
 import dev.bmcreations.blip.models.DomainVerificationStatus
 import dev.bmcreations.blip.server.db.TursoClient
@@ -38,22 +38,22 @@ class DomainService(
         return result.toMaps().mapNotNull { it["domain"] }
     }
 
-    suspend fun listAllDomains(): List<DomainDTO> {
+    suspend fun listAllDomains(): List<Domain> {
         val result = turso.execute("SELECT * FROM domains ORDER BY created_at DESC")
-        return result.toMaps().map { it.toDomainDTO() }
+        return result.toMaps().map { it.toDomain() }
     }
 
-    suspend fun getDomain(id: String): DomainDTO? {
+    suspend fun getDomain(id: String): Domain? {
         val row = turso.execute(
             "SELECT * FROM domains WHERE id = ?",
             listOf(TursoValue.Text(id))
         ).firstOrNull() ?: return null
-        return row.toDomainDTO()
+        return row.toDomain()
     }
 
     // -- Domain lifecycle --
 
-    suspend fun addDomain(domain: String): DomainDTO {
+    suspend fun addDomain(domain: String): Domain {
         val normalized = domain.lowercase().trim()
         require(normalized.matches(Regex("^[a-z0-9]([a-z0-9.-]*[a-z0-9])?\\.[a-z]{2,}$"))) {
             "Invalid domain format"
@@ -414,8 +414,8 @@ class DomainService(
 
     // -- Helpers --
 
-    private fun Map<String, String?>.toDomainDTO(): DomainDTO {
-        return DomainDTO(
+    private fun Map<String, String?>.toDomain(): Domain {
+        return Domain(
             id = this["id"]!!,
             domain = this["domain"]!!,
             status = DomainStatus.valueOf(this["status"] ?: "PENDING_DNS"),
