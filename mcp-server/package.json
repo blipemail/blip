@@ -1,11 +1,11 @@
 {
-  "name": "@blip/mcp-server",
+  "name": "@blip/email",
   "version": "0.1.0",
   "description": "MCP server for Blip disposable email — create inboxes, receive emails, extract OTP codes",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "blip-mcp-server": "dist/index.js"
+    "blip-email": "dist/index.js"
   },
   "scripts": {
     "build": "tsc",
