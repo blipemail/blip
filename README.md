@@ -4,6 +4,8 @@ Instant disposable email inboxes. API, CLI, MCP server, and web app.
 
 **[useblip.email](https://useblip.email)** | **[Docs](https://useblip.email/docs)** | **[API Reference](https://useblip.email/docs/api)**
 
+[![useblip/email MCP server](https://glama.ai/mcp/servers/blipemail/blip/badges/card.svg)](https://glama.ai/mcp/servers/blipemail/blip)
+
 ## Features
 
 - Disposable email addresses with random or custom slugs
