@@ -103,4 +103,14 @@ cd mcp-server && npm install && npm run build
 
 ## License
 
-AGPL-3.0. See [LICENSE](LICENSE).
+This repository uses per-component licensing:
+
+| Component | License |
+|---|---|
+| `server/core` | [AGPL-3.0](server/core/LICENSE) |
+| `mcp-server` | [MIT](mcp-server/LICENSE) |
+| `cli` | [MIT](cli/LICENSE) |
+| `shared-models` | [MIT](shared-models/LICENSE) |
+
+The API server is AGPL-3.0 to ensure modifications to the hosted service remain open source.
+The MCP server, CLI, and shared models are MIT for maximum adoption flexibility.
