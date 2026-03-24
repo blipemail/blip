@@ -75,4 +75,4 @@ BLIP_API_KEY=blip_ak_... npx @useblip/email
 
 ## License
 
-AGPL-3.0
+[MIT](LICENSE)
