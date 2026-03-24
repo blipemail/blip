@@ -14,6 +14,13 @@ if (!API_KEY) {
   process.exit(1);
 }
 
+if (!/^blip_[a-zA-Z0-9]+$/.test(API_KEY)) {
+  console.error(
+    "BLIP_API_KEY has an invalid format. Keys start with 'blip_' followed by alphanumeric characters."
+  );
+  process.exit(1);
+}
+
 async function blipFetch(
   path: string,
   options: RequestInit = {}
@@ -30,7 +37,7 @@ async function blipFetch(
 
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`Blip API error ${res.status}: ${body}`);
+    throw new Error(`Blip API error ${res.status} on ${options.method || "GET"} ${path}: ${body}`);
   }
 
   if (res.status === 204) return null;
@@ -39,7 +46,7 @@ async function blipFetch(
 
 const server = new McpServer({
   name: "blip",
-  version: "0.1.0",
+  version: "0.1.2",
 });
 
 // --- Tools ---
