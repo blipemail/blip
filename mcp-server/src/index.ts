@@ -14,7 +14,7 @@ if (!API_KEY) {
   process.exit(1);
 }
 
-if (!/^blip_[a-zA-Z0-9]+$/.test(API_KEY)) {
+if (!/^blip_[a-zA-Z0-9_]+$/.test(API_KEY)) {
   console.error(
     "BLIP_API_KEY has an invalid format. Keys start with 'blip_' followed by alphanumeric characters."
   );
