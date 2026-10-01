@@ -48,11 +48,40 @@ data class CoreServices(
     val cleanupService: CleanupService,
 )
 
-private val RequestBodyLimit = createApplicationPlugin("RequestBodyLimit") {
+private const val DEFAULT_BODY_LIMIT = 10L * 1024 * 1024
+
+// The email worker base64-encodes attachments into one JSON body (~4/3 growth),
+// and PRO allows 10 MB attachments, so the ingress route needs a larger cap.
+private const val INGRESS_BODY_LIMIT = 16L * 1024 * 1024
+
+private val IngressPath = Regex("^/v1/inboxes/[^/]+/emails/?$")
+
+private fun isIngressRequest(call: ApplicationCall, workerSecret: String): Boolean {
+    if (call.request.httpMethod != HttpMethod.Post) return false
+    if (!IngressPath.matches(call.request.path())) return false
+    val provided = call.request.headers["X-Worker-Secret"] ?: return false
+    return java.security.MessageDigest.isEqual(provided.toByteArray(), workerSecret.toByteArray())
+}
+
+internal class RequestBodyLimitConfig {
+    var workerSecret: String = ""
+}
+
+internal val RequestBodyLimit = createApplicationPlugin("RequestBodyLimit", ::RequestBodyLimitConfig) {
+    val workerSecret = pluginConfig.workerSecret
     onCall { call ->
+        val ingress = isIngressRequest(call, workerSecret)
+        val limit = if (ingress) INGRESS_BODY_LIMIT else DEFAULT_BODY_LIMIT
         val contentLength = call.request.header(HttpHeaders.ContentLength)?.toLongOrNull()
-        if (contentLength != null && contentLength > 10 * 1024 * 1024) {
-            call.respond(HttpStatusCode.PayloadTooLarge, ErrorResponse("payload_too_large", "Request body too large"))
+        val chunked = call.request.header(HttpHeaders.TransferEncoding)
+            ?.contains("chunked", ignoreCase = true) == true
+        when {
+            contentLength != null && contentLength > limit ->
+                call.respond(HttpStatusCode.PayloadTooLarge, ErrorResponse("payload_too_large", "Request body too large"))
+            // A chunked body has no declared size, so the limit can't be enforced up front.
+            // Only the ingress route is stricter; other routes keep accepting small chunked bodies.
+            ingress && contentLength == null && chunked ->
+                call.respond(HttpStatusCode.LengthRequired, ErrorResponse("length_required", "Content-Length required"))
         }
     }
 }
@@ -80,7 +109,9 @@ fun Application.coreModule(config: CoreConfig): CoreServices {
     val webhookService = WebhookService(turso, encryptionService = encryptionService, inboxService = inboxService)
     val cleanupService = CleanupService(turso, webhookService, sseManager, config.cleanupContributors)
 
-    install(RequestBodyLimit)
+    install(RequestBodyLimit) {
+        workerSecret = config.workerSecret
+    }
 
     install(ContentNegotiation) {
         json(json)

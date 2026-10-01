@@ -8,7 +8,10 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
+import java.io.IOException
 import kotlinx.serialization.json.*
 
 class TursoClient(
@@ -21,16 +24,19 @@ class TursoClient(
             json(json)
         }
         install(HttpTimeout) {
-            requestTimeoutMillis = 30_000
+            requestTimeoutMillis = 10_000
             connectTimeoutMillis = 10_000
         }
     }
+
+    private val logger = org.slf4j.LoggerFactory.getLogger(TursoClient::class.java)
 
     private val pipelineUrl = "$baseUrl/v2/pipeline"
 
     suspend fun execute(sql: String, args: List<TursoValue> = emptyList()): TursoResult {
         val results = executeBatch(listOf(Statement(sql, args)))
-        return results.first()
+        return results.firstOrNull()
+            ?: throw RuntimeException("Turso returned no result for statement")
     }
 
     suspend fun executeBatch(statements: List<Statement>): List<TursoResult> {
@@ -59,20 +65,9 @@ class TursoClient(
             }
         }
 
-        val response = client.post(pipelineUrl) {
-            contentType(ContentType.Application.Json)
-            if (authToken.isNotBlank()) {
-                header("Authorization", "Bearer $authToken")
-            }
-            setBody(body.toString())
-        }
+        val responseText = postWithRetry(body.toString())
 
-        if (response.status != HttpStatusCode.OK) {
-            val text = response.bodyAsText()
-            throw RuntimeException("Turso error ${response.status}: $text")
-        }
-
-        val responseJson = json.parseToJsonElement(response.bodyAsText()).jsonObject
+        val responseJson = json.parseToJsonElement(responseText).jsonObject
         val results = responseJson["results"]?.jsonArray ?: return emptyList()
 
         return results.mapNotNull { result ->
@@ -91,6 +86,34 @@ class TursoClient(
                 throw RuntimeException("Turso query error: $message")
             } else null
         }
+    }
+
+    /** Retries network errors, timeouts, 5xx and 429; any other status fails immediately. */
+    private suspend fun postWithRetry(body: String): String {
+        var lastError: Exception? = null
+        for (attempt in 0 until RETRY_DELAYS_MS.size + 1) {
+            if (attempt > 0) delay(RETRY_DELAYS_MS[attempt - 1])
+            try {
+                val response = client.post(pipelineUrl) {
+                    contentType(ContentType.Application.Json)
+                    if (authToken.isNotBlank()) {
+                        header("Authorization", "Bearer $authToken")
+                    }
+                    setBody(body)
+                }
+                if (response.status == HttpStatusCode.OK) return response.bodyAsText()
+                val error = RuntimeException("Turso error ${response.status}: ${response.bodyAsText()}")
+                val retryable = response.status.value >= 500 || response.status == HttpStatusCode.TooManyRequests
+                if (!retryable) throw error
+                lastError = error
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: IOException) { // includes Ktor request/connect/socket timeouts
+                lastError = e
+            }
+            logger.warn("Turso request failed (attempt {}/{}): {}", attempt + 1, RETRY_DELAYS_MS.size + 1, lastError?.message)
+        }
+        throw lastError!!
     }
 
     private fun parseResult(result: JsonObject?): TursoResult {
@@ -124,6 +147,8 @@ class TursoClient(
         return TursoResult(cols, rows, affectedRowCount, lastInsertRowid)
     }
 }
+
+private val RETRY_DELAYS_MS = listOf(200L, 600L)
 
 data class Statement(val sql: String, val args: List<TursoValue> = emptyList())
 

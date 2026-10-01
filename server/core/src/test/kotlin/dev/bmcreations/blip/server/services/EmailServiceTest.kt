@@ -111,6 +111,19 @@ class EmailServiceTest {
     }
 
     @Test
+    fun `ingestEmail rejects invalid base64 before inserting the email row`() = runTest {
+        stubInsertEmail()
+        stubSsePublish()
+
+        val request = simpleEmailRequest(
+            attachments = listOf(IngressAttachment(name = "bad.bin", contentType = "application/octet-stream", contentBase64 = "!!not base64!!"))
+        )
+
+        assertFailsWith<IllegalArgumentException> { service.ingestEmail(inboxId, request) }
+        coVerify(exactly = 0) { turso.execute(match { it.contains("INSERT INTO emails") }, any()) }
+    }
+
+    @Test
     fun `ingestEmail stores attachments`() = runTest {
         stubInsertEmail()
         stubInsertAttachment()

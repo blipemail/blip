@@ -81,4 +81,18 @@ class SseManagerTest {
         assertEquals(1, received1.size)
         assertEquals(1, received2.size)
     }
+
+    @Test
+    fun `publish does not suspend when a subscriber is stalled`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val received = mutableListOf<String>()
+        val job = launch(UnconfinedTestDispatcher()) {
+            sseManager.subscribe("inbox-1").collect { gate.await(); received += it.id }
+        }
+        yield()
+        // Far more than the 64-slot buffer; a SUSPEND policy would hang here.
+        repeat(500) { sseManager.publish("inbox-1", email("e$it")) }
+        gate.complete(Unit)
+        job.cancel()
+    }
 }

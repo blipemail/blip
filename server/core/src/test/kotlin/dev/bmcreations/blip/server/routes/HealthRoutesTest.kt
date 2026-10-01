@@ -33,9 +33,25 @@ class HealthRoutesTest {
         assertEquals(HttpStatusCode.OK, response.status)
         val body = response.bodyAsText()
         assertTrue(body.contains("\"ok\""), "Should report ok status")
-        assertTrue(body.contains("\"uptime\""), "Should include uptime")
-        assertTrue(body.contains("\"db\""), "Should include db health")
-        assertTrue(body.contains("\"stats\""), "Should include stats")
+        assertFalse(body.contains("stats"), "Public health must not expose counts")
+        coVerify(exactly = 1) { turso.execute("SELECT 1", emptyList()) }
+    }
+
+    @Test
+    fun `GET livez returns 200 without touching the db`() = testApplication {
+        val turso = mockk<TursoClient>()
+
+        install(ContentNegotiation) {
+            json(Json { ignoreUnknownKeys = true; encodeDefaults = true })
+        }
+        routing {
+            healthRoutes(turso)
+        }
+
+        val response = client.get("/livez")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        confirmVerified(turso)
     }
 
     @Test
