@@ -188,6 +188,16 @@ object Migrations {
 
         // Stripe customer linkage
         "ALTER TABLE users ADD COLUMN stripe_customer_id TEXT",
+
+        // Daily forwarding cap counters (owner_key is "user:<id>" or "session:<id>")
+        """
+        CREATE TABLE IF NOT EXISTS forwarding_usage (
+            owner_key TEXT NOT NULL,
+            day TEXT NOT NULL,
+            count INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (owner_key, day)
+        )
+        """.trimIndent(),
     )
 
     fun run(turso: TursoClient) = runBlocking {

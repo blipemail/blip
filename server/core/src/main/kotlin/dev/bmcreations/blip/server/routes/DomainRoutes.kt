@@ -2,6 +2,7 @@ package dev.bmcreations.blip.server.routes
 
 import dev.bmcreations.blip.models.CreateDomainRequest
 import dev.bmcreations.blip.server.ForbiddenException
+import dev.bmcreations.blip.server.secretsMatch
 import dev.bmcreations.blip.server.services.DomainService
 import io.ktor.http.*
 import io.ktor.server.request.*
@@ -20,7 +21,7 @@ fun Route.domainRoutes(domainService: DomainService, adminSecret: String) {
         // Auth check for all admin routes
         fun io.ktor.server.routing.RoutingContext.requireAdmin() {
             val secret = call.request.headers["X-Worker-Secret"]
-            if (secret != adminSecret) {
+            if (!secretsMatch(secret, adminSecret)) {
                 throw ForbiddenException("Admin access required")
             }
         }

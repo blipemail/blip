@@ -26,6 +26,8 @@ class WebhookServiceTest {
 
     @Test
     fun `createWebhook stores webhook and returns DTO with generated secret`() = runTest {
+        coEvery { turso.execute(match { it.contains("COUNT(*)") }, any()) } returns
+            TursoResult(listOf("cnt"), listOf(listOf("0")), 0, 0)
         coEvery { turso.execute(match { it.contains("INSERT INTO webhooks") }, any()) } returns
             TursoResult(emptyList(), emptyList(), 1, 1)
 
@@ -53,6 +55,8 @@ class WebhookServiceTest {
     @Test
     fun `createWebhook persists session_id in the row`() = runTest {
         val argsSlot = slot<List<TursoValue>>()
+        coEvery { turso.execute(match { it.contains("COUNT(*)") }, any()) } returns
+            TursoResult(listOf("cnt"), listOf(listOf("0")), 0, 0)
 
         coEvery { turso.execute(match { it.contains("INSERT INTO webhooks") }, capture(argsSlot)) } returns
             TursoResult(emptyList(), emptyList(), 1, 1)
@@ -467,5 +471,35 @@ class WebhookServiceTest {
         // Third retry should not exceed 15 minutes
         val third = webhookService.calculateBackoffSeconds(3)
         assertTrue(third <= 900, "Third backoff should not exceed 900 seconds, was $third")
+    }
+
+    // --- SSRF / signing / caps ---
+
+    @Test
+    fun `createWebhook rejects when the account already has the maximum`() = runTest {
+        coEvery { turso.execute(match { it.contains("COUNT(*)") }, any()) } returns
+            TursoResult(listOf("cnt"), listOf(listOf("${WebhookService.MAX_WEBHOOKS_PER_USER}")), 0, 0)
+        assertFailsWith<TierLimitException> {
+            webhookService.createWebhook("session-1", CreateWebhookRequest(url = "https://example.com/hook"))
+        }
+    }
+
+    @Test
+    fun `signPayloadV2 signs timestamp dot body`() {
+        val header = webhookService.signPayloadV2("{\"a\":1}", "k", 1700000000L)
+        val mac = Mac.getInstance("HmacSHA256").apply { init(SecretKeySpec("k".toByteArray(), "HmacSHA256")) }
+        val expected = mac.doFinal("1700000000.{\"a\":1}".toByteArray()).joinToString("") { "%02x".format(it) }
+        assertEquals("t=1700000000,v1=$expected", header)
+    }
+
+    @Test
+    fun `recordDelivery for a failed first attempt schedules a retry`() = runTest {
+        val params = slot<List<TursoValue>>()
+        coEvery { turso.execute(match { it.contains("INSERT INTO webhook_deliveries") }, capture(params)) } returns
+            TursoResult(emptyList(), emptyList(), 1, 1)
+        webhookService.recordDelivery("wh-1", "email-1", 500, DeliveryStatus.FAILED)
+        val nextRetry = params.captured[5]
+        assertTrue(nextRetry is TursoValue.Text, "next_retry_at must be set")
+        assertTrue(params.captured[6] is TursoValue.Null, "completed_at must stay null while retries remain")
     }
 }

@@ -4,6 +4,7 @@ import dev.bmcreations.blip.models.IngressEmailRequest
 import dev.bmcreations.blip.models.Tier
 import dev.bmcreations.blip.server.ForbiddenException
 import dev.bmcreations.blip.server.NotFoundException
+import dev.bmcreations.blip.server.secretsMatch
 import dev.bmcreations.blip.server.services.EmailService
 import dev.bmcreations.blip.server.services.ExtractionService
 import dev.bmcreations.blip.server.services.ForwardingService
@@ -28,7 +29,7 @@ fun Route.emailRoutes(
     post("/v1/inboxes/{address}/emails") {
         val secret = call.request.headers["X-Worker-Secret"]
             ?: throw ForbiddenException("Missing worker secret")
-        if (secret != workerSecret) {
+        if (!secretsMatch(secret, workerSecret)) {
             throw ForbiddenException("Invalid worker secret")
         }
 
@@ -56,24 +57,17 @@ fun Route.emailRoutes(
 
         val summary = emailService.ingestEmail(inbox.id, request, stripAttachments, tier.maxAttachmentBytes)
 
-        // Fire webhooks (non-blocking — errors are logged, not propagated)
+        // Webhooks and forwarding run in the background and re-check the owner's tier themselves.
         if (sessionId != null && webhookService != null) {
             webhookService.deliverWebhooks(inbox.id, sessionId, summary.id, address, request)
         }
-
-        // Forward email to configured addresses
-        if (forwardingService != null) {
-            val rules = forwardingService.getRulesForInbox(inbox.id)
-            for (rule in rules) {
-                forwardingService.forwardEmail(
-                    fromAddress = request.from,
-                    subject = request.subject,
-                    textBody = request.textBody,
-                    htmlBody = request.htmlBody,
-                    forwardTo = rule.forwardToEmail,
-                )
-            }
-        }
+        forwardingService?.forwardForInbox(
+            inboxId = inbox.id,
+            fromAddress = request.from,
+            subject = request.subject,
+            textBody = request.textBody,
+            htmlBody = request.htmlBody,
+        )
 
         call.respond(HttpStatusCode.Created, summary)
     }

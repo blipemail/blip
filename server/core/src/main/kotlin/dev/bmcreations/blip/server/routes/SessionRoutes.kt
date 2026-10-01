@@ -4,15 +4,14 @@ import dev.bmcreations.blip.models.CreateSessionResponse
 import dev.bmcreations.blip.server.db.TursoClient
 import dev.bmcreations.blip.server.db.TursoValue
 import dev.bmcreations.blip.server.services.SessionService
-import io.ktor.server.plugins.*
+import dev.bmcreations.blip.server.clientIp
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
 fun Route.sessionCreateRoutes(sessionService: SessionService) {
     route("/v1/sessions") {
         post {
-            val clientIp = call.request.headers["X-Forwarded-For"]?.split(",")?.first()?.trim()
-                ?: call.request.origin.remoteAddress
+            val clientIp = call.clientIp()
             val session = sessionService.createSession(clientIp)
             call.respond(CreateSessionResponse(token = session.token, session = session))
         }
