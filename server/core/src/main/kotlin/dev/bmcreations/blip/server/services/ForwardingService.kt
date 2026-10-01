@@ -43,7 +43,7 @@ class ForwardingService(
     }
 
     companion object {
-        const val DEFAULT_FORWARD_FROM = "Blip Forwarding <forward@useblip.email>"
+        const val DEFAULT_FORWARD_FROM = "Blip Forwarding <forward@mail.useblip.email>"
         const val DEFAULT_DAILY_CAP = 100
 
         /**
