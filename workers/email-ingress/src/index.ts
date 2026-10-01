@@ -6,6 +6,8 @@ interface Env {
 }
 
 const FETCH_TIMEOUT_MS = 25_000;
+const RETRYABLE_STATUSES = new Set([429, 502, 503]);
+const RETRY_DELAYS_MS = [1_000, 4_000];
 
 export default {
   async email(message: ForwardableEmailMessage, env: Env): Promise<void> {
@@ -54,22 +56,31 @@ export default {
 
     const apiUrl = `${env.API_BASE_URL}/v1/inboxes/${encodeURIComponent(address)}/emails`;
 
+    // The API doesn't deduplicate deliveries, so only retry responses that mean the
+    // request never reached it: rate limiting, or the proxy's answer while the API
+    // restarts during a deploy. A timeout or a 500 may have stored the email already.
     let response: Response;
-    try {
-      response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Worker-Secret': env.WORKER_SECRET,
-        },
-        body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      });
-    } catch (err) {
-      // Timeout or network failure: the API may or may not have stored the email.
-      console.error(`API request failed for ${address}: ${err}`);
-      message.setReject('Temporary failure, please retry');
-      return;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Worker-Secret': env.WORKER_SECRET,
+          },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        });
+      } catch (err) {
+        // Timeout or network failure: the API may or may not have stored the email.
+        console.error(`API request failed for ${address}: ${err}`);
+        message.setReject('Temporary failure, please retry');
+        return;
+      }
+      if (!RETRYABLE_STATUSES.has(response.status) || attempt >= RETRY_DELAYS_MS.length) break;
+      console.warn(`API returned ${response.status} for ${address}; retrying`);
+      await response.body?.cancel();
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
     }
 
     if (response.ok) return;
