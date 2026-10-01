@@ -10,6 +10,13 @@ import kotlinx.serialization.json.Json
 import java.time.Instant
 import java.util.UUID
 
+private class DecodedAttachment(
+    val name: String,
+    val contentType: String,
+    val base64: String,
+    val bytes: ByteArray,
+)
+
 class EmailService(
     private val turso: TursoClient,
     private val sseManager: SseManager,
@@ -47,6 +54,23 @@ class EmailService(
             encryptionService.encrypt(htmlBody, encryptionKey)
         } else htmlBody
 
+        // Decode and validate attachments before touching the database, so bad base64
+        // fails the request without leaving an orphan email row behind.
+        val attachments = if (stripAttachments) emptyList() else request.attachments.mapNotNull { att ->
+            val decoded = try {
+                java.util.Base64.getDecoder().decode(att.contentBase64)
+            } catch (e: IllegalArgumentException) {
+                throw IllegalArgumentException("Attachment '${att.name}' is not valid base64")
+            }
+            if (maxAttachmentBytes > 0 && decoded.size > maxAttachmentBytes) {
+                logger.warn(
+                    "Skipping oversized attachment '{}' ({} bytes, limit {} bytes) on email {}",
+                    att.name, decoded.size, maxAttachmentBytes, emailId
+                )
+                null
+            } else DecodedAttachment(att.name, att.contentType, att.contentBase64, decoded)
+        }
+
         turso.execute(
             """
             INSERT INTO emails (id, inbox_id, from_addr, to_addr, subject, text_body, html_body, headers, received_at, preview)
@@ -67,34 +91,24 @@ class EmailService(
         )
 
         // Store attachments (unless stripped for FREE tier)
-        if (!stripAttachments) {
-            for (att in request.attachments) {
-                val attId = UUID.randomUUID().toString()
-                val decoded = java.util.Base64.getDecoder().decode(att.contentBase64)
-                if (maxAttachmentBytes > 0 && decoded.size > maxAttachmentBytes) {
-                    logger.warn(
-                        "Skipping oversized attachment '{}' ({} bytes, limit {} bytes) on email {}",
-                        att.name, decoded.size, maxAttachmentBytes, emailId
-                    )
-                    continue
-                }
-                val storedData = if (encryptionKey != null) {
-                    java.util.Base64.getEncoder().encodeToString(
-                        encryptionService.encryptBytes(decoded, encryptionKey)
-                    )
-                } else att.contentBase64
-                turso.execute(
-                    "INSERT INTO attachments (id, email_id, name, content_type, size, data) VALUES (?, ?, ?, ?, ?, ?)",
-                    listOf(
-                        TursoValue.Text(attId),
-                        TursoValue.Text(emailId),
-                        TursoValue.Text(att.name),
-                        TursoValue.Text(att.contentType),
-                        TursoValue.Integer(decoded.size.toLong()),
-                        TursoValue.Blob(storedData),
-                    )
+        for (att in attachments) {
+            val attId = UUID.randomUUID().toString()
+            val storedData = if (encryptionKey != null) {
+                java.util.Base64.getEncoder().encodeToString(
+                    encryptionService.encryptBytes(att.bytes, encryptionKey)
                 )
-            }
+            } else att.base64
+            turso.execute(
+                "INSERT INTO attachments (id, email_id, name, content_type, size, data) VALUES (?, ?, ?, ?, ?, ?)",
+                listOf(
+                    TursoValue.Text(attId),
+                    TursoValue.Text(emailId),
+                    TursoValue.Text(att.name),
+                    TursoValue.Text(att.contentType),
+                    TursoValue.Integer(att.bytes.size.toLong()),
+                    TursoValue.Blob(storedData),
+                )
+            )
         }
 
         val summary = EmailSummary(
@@ -110,6 +124,14 @@ class EmailService(
 
         return summary
     }
+
+    private fun decryptOrPlaceholder(raw: String, key: String, emailId: String, part: String): String =
+        try {
+            encryptionService.decrypt(raw, key)
+        } catch (e: Exception) {
+            logger.error("Failed to decrypt {} body of email {}", part, emailId, e)
+            DECRYPT_FAILED_PLACEHOLDER
+        }
 
     suspend fun getEmail(emailId: String): EmailDetail {
         val row = turso.execute(
@@ -140,12 +162,12 @@ class EmailService(
         val encryptionKey = inboxService?.getEncryptionKey(row["inbox_id"]!!)
         val textBody = row["text_body"]?.let { raw ->
             if (encryptionKey != null) {
-                try { encryptionService.decrypt(raw, encryptionKey) } catch (_: Exception) { raw }
+                decryptOrPlaceholder(raw, encryptionKey, emailId, "text")
             } else raw
         }
         val htmlBody = row["html_body"]?.let { raw ->
             if (encryptionKey != null) {
-                try { encryptionService.decrypt(raw, encryptionKey) } catch (_: Exception) { raw }
+                decryptOrPlaceholder(raw, encryptionKey, emailId, "html")
             } else raw
         }
 
@@ -190,7 +212,12 @@ class EmailService(
         // Decrypt if encryption key is available
         val encryptionKey = inboxId?.let { inboxService?.getEncryptionKey(it) }
         val decrypted = if (encryptionKey != null) {
-            try { encryptionService.decryptBytes(bytes, encryptionKey) } catch (_: Exception) { bytes }
+            try {
+                encryptionService.decryptBytes(bytes, encryptionKey)
+            } catch (e: Exception) {
+                logger.error("Failed to decrypt attachment '{}' on email {}", name, emailId, e)
+                throw IllegalStateException("Attachment could not be decrypted")
+            }
         } else bytes
 
         return contentType to decrypted
@@ -211,5 +238,9 @@ class EmailService(
             listOf(TursoValue.Text(emailId))
         ).firstOrNull() ?: throw NotFoundException("Email not found")
         return row["inbox_id"]!!
+    }
+
+    private companion object {
+        const val DECRYPT_FAILED_PLACEHOLDER = "[This message could not be decrypted]"
     }
 }

@@ -1,6 +1,7 @@
 package dev.bmcreations.blip.server.sse
 
 import dev.bmcreations.blip.models.EmailSummary
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.*
 import java.util.concurrent.ConcurrentHashMap
 
@@ -11,13 +12,18 @@ class SseManager {
         return getOrCreateFlow(inboxId).asSharedFlow()
     }
 
-    suspend fun publish(inboxId: String, email: EmailSummary) {
-        getOrCreateFlow(inboxId).emit(email)
+    /** Never suspends: a slow subscriber loses its oldest events instead of blocking ingest. */
+    fun publish(inboxId: String, email: EmailSummary) {
+        getOrCreateFlow(inboxId).tryEmit(email)
     }
 
     private fun getOrCreateFlow(inboxId: String): MutableSharedFlow<EmailSummary> {
         return flows.getOrPut(inboxId) {
-            MutableSharedFlow(replay = 0, extraBufferCapacity = 64)
+            MutableSharedFlow(
+                replay = 0,
+                extraBufferCapacity = 64,
+                onBufferOverflow = BufferOverflow.DROP_OLDEST,
+            )
         }
     }
 
