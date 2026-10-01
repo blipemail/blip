@@ -72,4 +72,15 @@ class RateLimitExemptionTest {
         assertEquals(HttpStatusCode.OK, client.get("/other").status)
         assertEquals(HttpStatusCode.TooManyRequests, client.get("/other").status)
     }
+
+    @Test
+    fun `prefers CF-Connecting-IP over X-Forwarded-For`() {
+        assertEquals("2605:59ca::1", ClientIp.resolve("2605:59ca::1", "2605:59ca::1, 152.233.40.1", "10.0.0.1", 1))
+    }
+
+    @Test
+    fun `falls back to X-Forwarded-For when CF-Connecting-IP is blank`() {
+        assertEquals("203.0.113.9", ClientIp.resolve(" ", "1.2.3.4, 203.0.113.9", "10.0.0.1", 1))
+        assertEquals("203.0.113.9", ClientIp.resolve(null, "1.2.3.4, 203.0.113.9", "10.0.0.1", 1))
+    }
 }
