@@ -55,6 +55,7 @@ fun Route.webhookRoutes(
     get("/v1/webhooks/{id}/deliveries") {
         val session = sessionService.extractSession(call.request.headers["Authorization"])
         val webhookId = call.parameters["id"]!!
+        webhookService.assertOwnsWebhook(webhookId, session.id)
         val deliveries = webhookService.getDeliveryLog(webhookId)
         call.respond(deliveries)
     }

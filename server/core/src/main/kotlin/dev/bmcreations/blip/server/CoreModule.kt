@@ -31,6 +31,11 @@ data class CoreConfig(
     val apiKeyValidator: ApiKeyValidator? = null,
     val cleanupContributors: List<CleanupContributor> = emptyList(),
     val turso: TursoClient? = null,
+    /**
+     * Request paths the "public" IP rate limiter does not count (e.g. a payment provider's webhook,
+     * which arrives from shared egress IPs). Exact match on the request path.
+     */
+    val publicRateLimitExemptPaths: Set<String> = emptySet(),
 )
 
 data class CoreServices(
@@ -162,32 +167,35 @@ fun Application.coreModule(config: CoreConfig): CoreServices {
         }
     }
 
+    // Authenticated limiters key on the validated session id. An unknown/forged token falls back to
+    // the caller's IP, so rotating bogus tokens cannot mint fresh buckets.
+    suspend fun ApplicationCall.sessionRateKey(): String {
+        val token = request.headers["Authorization"]?.removePrefix("Bearer ")?.trim()
+        if (token.isNullOrEmpty()) return "ip:${clientIp()}"
+        return try {
+            "session:${sessionService.getSessionByToken(token).id}"
+        } catch (e: UnauthorizedException) {
+            "ip:${clientIp()}"
+        }
+    }
+
     install(RateLimit) {
         register(RateLimitName("public")) {
             rateLimiter(limit = 30, refillPeriod = 1.minutes)
-            requestKey { call ->
-                call.request.headers["X-Forwarded-For"]?.split(",")?.first()?.trim()
-                    ?: call.request.origin.remoteAddress
-            }
+            requestKey { call -> call.clientIp() }
+            requestWeight { call, _ -> if (call.request.path() in config.publicRateLimitExemptPaths) 0 else 1 }
         }
         register(RateLimitName("session-create")) {
             rateLimiter(limit = 5, refillPeriod = 1.minutes)
-            requestKey { call ->
-                call.request.headers["X-Forwarded-For"]?.split(",")?.first()?.trim()
-                    ?: call.request.origin.remoteAddress
-            }
+            requestKey { call -> call.clientIp() }
         }
         register(RateLimitName("authenticated")) {
             rateLimiter(limit = 600, refillPeriod = 1.minutes)
-            requestKey { call ->
-                call.request.headers["Authorization"]?.removePrefix("Bearer ") ?: "anonymous"
-            }
+            requestKey { call -> call.sessionRateKey() }
         }
         register(RateLimitName("write")) {
             rateLimiter(limit = 60, refillPeriod = 1.minutes)
-            requestKey { call ->
-                call.request.headers["Authorization"]?.removePrefix("Bearer ") ?: "anonymous"
-            }
+            requestKey { call -> call.sessionRateKey() }
         }
     }
 

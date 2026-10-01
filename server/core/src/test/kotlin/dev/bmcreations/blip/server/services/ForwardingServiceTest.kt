@@ -8,6 +8,9 @@ import dev.bmcreations.blip.server.db.TursoResult
 import dev.bmcreations.blip.server.db.TursoValue
 import io.mockk.*
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.*
 
 class ForwardingServiceTest {
@@ -178,5 +181,38 @@ class ForwardingServiceTest {
 
         assertEquals(1, rules.size)
         assertEquals("fwd@test.com", rules[0].forwardToEmail)
+    }
+
+    // --- Resend payload ---
+
+    @Test
+    fun `hostile envelope sender cannot inject Resend fields`() {
+        val hostile = "a@b.com\", \"to\": [\"victim@example.com\"], \"bcc\": \"x@y.com"
+        val payload = ForwardingService.buildResendPayload(
+            forwardFrom = "Blip Forwarding <forward@mail.useblip.email>",
+            originalSender = hostile,
+            subject = "hi \"there\"\n",
+            textBody = "body",
+            htmlBody = null,
+            forwardTo = "me@example.com",
+        )
+        val reparsed = kotlinx.serialization.json.Json.parseToJsonElement(payload.toString()).jsonObject
+        assertEquals(setOf("from", "to", "reply_to", "subject", "text"), reparsed.keys)
+        assertEquals(hostile, reparsed["reply_to"]!!.jsonPrimitive.content)
+        assertEquals("Blip Forwarding <forward@mail.useblip.email>", reparsed["from"]!!.jsonPrimitive.content)
+        assertEquals(listOf("me@example.com"), reparsed["to"]!!.jsonArray.map { it.jsonPrimitive.content })
+        assertEquals("Fwd: hi \"there\"\n", reparsed["subject"]!!.jsonPrimitive.content)
+    }
+
+    // --- Daily cap ---
+
+    @Test
+    fun `tryConsumeDailyQuota is true while the upsert returns a row`() = runTest {
+        coEvery { turso.execute(match { it.contains("forwarding_usage") }, any()) } returnsMany listOf(
+            TursoResult(listOf("count"), listOf(listOf("100")), 1, 1),
+            TursoResult(listOf("count"), emptyList(), 0, 0),
+        )
+        assertTrue(service.tryConsumeDailyQuota("user:u1"))
+        assertFalse(service.tryConsumeDailyQuota("user:u1"))
     }
 }

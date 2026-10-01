@@ -11,15 +11,29 @@ import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import kotlinx.serialization.json.Json
+import io.ktor.client.statement.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 import org.slf4j.LoggerFactory
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.*
 
 class ForwardingService(
     private val turso: TursoClient,
     private val resendApiKey: String,
+    private val forwardFrom: String = System.getenv("FORWARD_FROM") ?: DEFAULT_FORWARD_FROM,
+    private val dailyCap: Int = System.getenv("FORWARD_DAILY_CAP")?.toIntOrNull() ?: DEFAULT_DAILY_CAP,
 ) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val log = LoggerFactory.getLogger(ForwardingService::class.java)
     private val httpClient = HttpClient(CIO) {
         install(HttpTimeout) {
@@ -29,6 +43,30 @@ class ForwardingService(
     }
 
     companion object {
+        const val DEFAULT_FORWARD_FROM = "Blip Forwarding <forward@mail.useblip.email>"
+        const val DEFAULT_DAILY_CAP = 100
+
+        /**
+         * Resend payload built with a JSON encoder so no field can break out of its string.
+         * `from` is a Blip address (Resend rejects unverified sender domains); the original sender
+         * goes in reply_to.
+         */
+        internal fun buildResendPayload(
+            forwardFrom: String,
+            originalSender: String,
+            subject: String,
+            textBody: String?,
+            htmlBody: String?,
+            forwardTo: String,
+        ): JsonObject = buildJsonObject {
+            put("from", forwardFrom)
+            putJsonArray("to") { add(forwardTo) }
+            put("reply_to", originalSender)
+            put("subject", "Fwd: $subject")
+            if (textBody != null) put("text", textBody)
+            if (htmlBody != null) put("html", htmlBody)
+        }
+
         private val EMAIL_REGEX = Regex("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\$")
     }
 
@@ -106,6 +144,50 @@ class ForwardingService(
         return listRules(inboxId)
     }
 
+    /**
+     * Forwards an ingested email to the inbox's rules. Skips when the inbox owner's current tier no
+     * longer includes forwarding, and stops once the owner's daily cap is reached. Runs in the
+     * background so ingest does not wait on Resend.
+     */
+    fun forwardForInbox(
+        inboxId: String,
+        fromAddress: String,
+        subject: String,
+        textBody: String?,
+        htmlBody: String?,
+    ) {
+        scope.launch {
+            try {
+                val owner = turso.resolveDeliveryOwner(inboxId)
+                if (owner.tier.forwardingRules == 0) return@launch
+                val rules = getRulesForInbox(inboxId)
+                for (rule in rules) {
+                    if (!tryConsumeDailyQuota(owner.ownerKey ?: "inbox:$inboxId")) {
+                        log.warn("Forwarding cap ($dailyCap/day) reached for ${owner.ownerKey}; dropping forward to inbox $inboxId")
+                        break
+                    }
+                    forwardEmail(fromAddress, subject, textBody, htmlBody, rule.forwardToEmail)
+                }
+            } catch (e: Exception) {
+                log.error("Forwarding failed for inbox $inboxId", e)
+            }
+        }
+    }
+
+    /** Atomically counts one forward against today's cap. False when the cap is already reached. */
+    suspend fun tryConsumeDailyQuota(ownerKey: String): Boolean {
+        val today = LocalDate.now(ZoneOffset.UTC).toString()
+        val row = turso.execute(
+            """
+            INSERT INTO forwarding_usage (owner_key, day, count) VALUES (?, ?, 1)
+            ON CONFLICT(owner_key, day) DO UPDATE SET count = count + 1 WHERE count < ?
+            RETURNING count
+            """.trimIndent(),
+            listOf(TursoValue.Text(ownerKey), TursoValue.Text(today), TursoValue.Integer(dailyCap.toLong()))
+        ).firstOrNull()
+        return row != null
+    }
+
     suspend fun forwardEmail(
         fromAddress: String,
         subject: String,
@@ -114,31 +196,21 @@ class ForwardingService(
         forwardTo: String,
     ) {
         if (resendApiKey.isBlank()) {
-            log.warn("Skipping forward to $forwardTo — RESEND_API_KEY not configured")
+            log.error("Skipping forward to $forwardTo: RESEND_API_KEY not configured")
             return
         }
         try {
-            val subjectJson = Json.encodeToString("Fwd: $subject")
-            val bodyParts = buildString {
-                append("""{"from": "$fromAddress", "to": ["$forwardTo"], "subject": $subjectJson""")
-                if (textBody != null) {
-                    val textJson = Json.encodeToString(textBody)
-                    append(""", "text": $textJson""")
-                }
-                if (htmlBody != null) {
-                    val htmlJson = Json.encodeToString(htmlBody)
-                    append(""", "html": $htmlJson""")
-                }
-                append("}")
-            }
-
-            httpClient.post("https://api.resend.com/emails") {
+            val payload = buildResendPayload(forwardFrom, fromAddress, subject, textBody, htmlBody, forwardTo)
+            val response = httpClient.post("https://api.resend.com/emails") {
                 header("Authorization", "Bearer $resendApiKey")
                 contentType(ContentType.Application.Json)
-                setBody(bodyParts)
+                setBody(payload.toString())
+            }
+            if (!response.status.isSuccess()) {
+                log.error("Resend rejected forward to $forwardTo: status=${response.status.value} body=${response.bodyAsText().take(500)}")
             }
         } catch (e: Exception) {
-            log.warn("Failed to forward email to $forwardTo: ${e.message}")
+            log.error("Failed to forward email to $forwardTo: ${e.message}")
         }
     }
 }

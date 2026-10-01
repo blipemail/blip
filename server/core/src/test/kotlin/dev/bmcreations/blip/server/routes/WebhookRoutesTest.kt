@@ -242,4 +242,52 @@ class WebhookRoutesTest {
         assertTrue(body.contains("\"del-1\""), "Response should contain delivery id")
         assertTrue(body.contains("\"SUCCESS\""), "Response should contain delivery status")
     }
+
+    // --- GET /v1/webhooks/{id}/deliveries ownership ---
+
+    @Test
+    fun `GET deliveries returns 403 for a webhook owned by another session`() = testApplication {
+        val turso = mockk<dev.bmcreations.blip.server.db.TursoClient>()
+        coEvery { turso.execute(match { it.contains("SELECT session_id FROM webhooks") }, any()) } returns
+            dev.bmcreations.blip.server.db.TursoResult(listOf("session_id"), listOf(listOf("someone-else")), 0, 0)
+        val webhookService = WebhookService(turso)
+        val sessionService = mockk<SessionService>(relaxed = true)
+        coEvery { sessionService.extractSession("Bearer pro-token") } returns proSession
+        setup { webhookRoutes(webhookService, sessionService, mockk<InboxService>(relaxed = true)) }
+
+        val response = client.get("/v1/webhooks/wh-1/deliveries") { header("Authorization", "Bearer pro-token") }
+
+        assertEquals(HttpStatusCode.Forbidden, response.status)
+        coVerify(exactly = 0) { turso.execute(match { it.contains("webhook_deliveries") }, any()) }
+    }
+
+    @Test
+    fun `GET deliveries returns 404 for an unknown webhook`() = testApplication {
+        val turso = mockk<dev.bmcreations.blip.server.db.TursoClient>()
+        coEvery { turso.execute(any(), any()) } returns
+            dev.bmcreations.blip.server.db.TursoResult(listOf("session_id"), emptyList(), 0, 0)
+        val sessionService = mockk<SessionService>(relaxed = true)
+        coEvery { sessionService.extractSession("Bearer pro-token") } returns proSession
+        setup { webhookRoutes(WebhookService(turso), sessionService, mockk<InboxService>(relaxed = true)) }
+
+        val response = client.get("/v1/webhooks/nope/deliveries") { header("Authorization", "Bearer pro-token") }
+
+        assertEquals(HttpStatusCode.NotFound, response.status)
+    }
+
+    @Test
+    fun `GET deliveries returns the log for the owner`() = testApplication {
+        val turso = mockk<dev.bmcreations.blip.server.db.TursoClient>()
+        coEvery { turso.execute(match { it.contains("SELECT session_id FROM webhooks") }, any()) } returns
+            dev.bmcreations.blip.server.db.TursoResult(listOf("session_id"), listOf(listOf("s2")), 0, 0)
+        coEvery { turso.execute(match { it.contains("FROM webhook_deliveries") }, any()) } returns
+            dev.bmcreations.blip.server.db.TursoResult(emptyList(), emptyList(), 0, 0)
+        val sessionService = mockk<SessionService>(relaxed = true)
+        coEvery { sessionService.extractSession("Bearer pro-token") } returns proSession
+        setup { webhookRoutes(WebhookService(turso), sessionService, mockk<InboxService>(relaxed = true)) }
+
+        val response = client.get("/v1/webhooks/wh-1/deliveries") { header("Authorization", "Bearer pro-token") }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+    }
 }
