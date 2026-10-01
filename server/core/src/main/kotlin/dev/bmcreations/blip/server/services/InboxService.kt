@@ -61,16 +61,17 @@ class InboxService(
     }
 
     private suspend fun createInboxInternal(sessionId: String, tier: Tier, request: CreateInboxRequest, userId: String?): Inbox {
-        // Check tier limits — count by user if authenticated, else by session
+        // Check tier limits — count live inboxes by user if authenticated, else by session
+        val nowArg = TursoValue.Text(Instant.now().toString())
         val count = if (userId != null) {
             turso.execute(
-                "SELECT COUNT(*) as cnt FROM inboxes WHERE user_id = ?",
-                listOf(TursoValue.Text(userId), TursoValue.Text(Instant.now().toString()))
+                "SELECT COUNT(*) as cnt FROM inboxes WHERE user_id = ? AND expires_at > ?",
+                listOf(TursoValue.Text(userId), nowArg)
             )
         } else {
             turso.execute(
-                "SELECT COUNT(*) as cnt FROM inboxes WHERE session_id = ?",
-                listOf(TursoValue.Text(sessionId))
+                "SELECT COUNT(*) as cnt FROM inboxes WHERE session_id = ? AND expires_at > ?",
+                listOf(TursoValue.Text(sessionId), nowArg)
             )
         }.firstOrNull()?.get("cnt")?.toLongOrNull() ?: 0
 
