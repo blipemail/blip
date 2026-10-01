@@ -208,4 +208,24 @@ class InboxLifetimeSqlTest {
 
         assertEquals(listOf("live"), inboxService.listInboxes("s1").map { it.id })
     }
+
+    @Test
+    fun `signed-in user can create inbox, and expired inboxes do not count toward the cap`() = runTest {
+        user("u1")
+        session("s1", expiresAt = iso(30, ChronoUnit.DAYS), userId = "u1")
+        // FREE allows a limited number; fill with expired ones that cleanup hasn't removed yet.
+        repeat(Tier.FREE.maxAddresses) { inbox("old$it", "s1", iso(-1, ChronoUnit.HOURS), userId = "u1") }
+
+        val created = inboxService.createInbox("s1", Tier.FREE, userId = "u1")
+
+        assertEquals("u1", db.run("SELECT user_id FROM inboxes WHERE id = ?", listOf(TursoValue.Text(created.id))).firstOrNull()!!["user_id"])
+    }
+
+    @Test
+    fun `anonymous session cap ignores expired inboxes`() = runTest {
+        session("s1", expiresAt = iso(1, ChronoUnit.DAYS))
+        repeat(Tier.FREE.maxAddresses) { inbox("old$it", "s1", iso(-1, ChronoUnit.HOURS)) }
+
+        inboxService.createInbox("s1", Tier.FREE)
+    }
 }
