@@ -65,7 +65,7 @@ class InboxService(
         val count = if (userId != null) {
             turso.execute(
                 "SELECT COUNT(*) as cnt FROM inboxes WHERE user_id = ?",
-                listOf(TursoValue.Text(userId))
+                listOf(TursoValue.Text(userId), TursoValue.Text(Instant.now().toString()))
             )
         } else {
             turso.execute(
@@ -193,10 +193,10 @@ class InboxService(
                        i.sniper_opens_at, i.sniper_closes_at, i.sniper_sealed,
                        (SELECT COUNT(*) FROM emails e WHERE e.inbox_id = i.id) as email_count
                 FROM inboxes i
-                WHERE i.user_id = ? AND i.expires_at > datetime('now')
+                WHERE i.user_id = ? AND i.expires_at > ?
                 ORDER BY i.created_at DESC
                 """.trimIndent(),
-                listOf(TursoValue.Text(userId))
+                listOf(TursoValue.Text(userId), TursoValue.Text(Instant.now().toString()))
             )
         } else {
             turso.execute(
@@ -205,10 +205,10 @@ class InboxService(
                        i.sniper_opens_at, i.sniper_closes_at, i.sniper_sealed,
                        (SELECT COUNT(*) FROM emails e WHERE e.inbox_id = i.id) as email_count
                 FROM inboxes i
-                WHERE i.session_id = ? AND i.expires_at > datetime('now')
+                WHERE i.session_id = ? AND i.expires_at > ?
                 ORDER BY i.created_at DESC
                 """.trimIndent(),
-                listOf(TursoValue.Text(sessionId))
+                listOf(TursoValue.Text(sessionId), TursoValue.Text(Instant.now().toString()))
             )
         }
 
@@ -225,6 +225,11 @@ class InboxService(
             """.trimIndent(),
             listOf(TursoValue.Text(inboxId))
         ).firstOrNull() ?: throw NotFoundException("Inbox not found")
+
+        // Expired inboxes may linger until the next cleanup pass; treat them as gone.
+        if (!Instant.parse(inboxRow["expires_at"]!!).isAfter(Instant.now())) {
+            throw NotFoundException("Inbox not found")
+        }
 
         val ownerMatch = (userId != null && inboxRow["user_id"] == userId) || inboxRow["session_id"] == sessionId
         if (!ownerMatch) {
@@ -267,9 +272,9 @@ class InboxService(
             """
             SELECT id, address, domain, session_id, created_at, expires_at,
                    sniper_opens_at, sniper_closes_at, sniper_sealed
-            FROM inboxes WHERE address = ? AND expires_at > datetime('now')
+            FROM inboxes WHERE address = ? AND expires_at > ?
             """.trimIndent(),
-            listOf(TursoValue.Text(address))
+            listOf(TursoValue.Text(address), TursoValue.Text(Instant.now().toString()))
         ).firstOrNull() ?: return null
 
         return row.toInbox()
@@ -329,6 +334,31 @@ class InboxService(
         return row["session_id"]
     }
 
+    /**
+     * Tier governing inbox-scoped behaviour (attachments, retention). Prefers the owning
+     * user's subscription flags when the inbox has a user_id, since the creating session
+     * may be gone or stale; falls back to the creating session's tier, then FREE.
+     */
+    suspend fun tierForInbox(inboxId: String): Tier {
+        val row = turso.execute(
+            """
+            SELECT i.user_id, u.id AS owner_id, u.has_pro, u.has_agent, s.tier AS session_tier
+            FROM inboxes i
+            LEFT JOIN users u ON u.id = i.user_id
+            LEFT JOIN sessions s ON s.id = i.session_id
+            WHERE i.id = ?
+            """.trimIndent(),
+            listOf(TursoValue.Text(inboxId))
+        ).firstOrNull() ?: return Tier.FREE
+
+        return resolveTier(
+            userFound = row["owner_id"] != null,
+            hasPro = row["has_pro"] == "1",
+            hasAgent = row["has_agent"] == "1",
+            sessionTier = row["session_tier"]?.let { runCatching { Tier.valueOf(it) }.getOrNull() },
+        )
+    }
+
     private fun Map<String, String?>.toInbox(): Inbox {
         val sniperOpens = this["sniper_opens_at"]
         val sniperCloses = this["sniper_closes_at"]
@@ -353,3 +383,13 @@ class InboxService(
         )
     }
 }
+
+/** PRO wins over AGENT when a user has both flags. */
+internal fun resolveTier(userFound: Boolean, hasPro: Boolean, hasAgent: Boolean, sessionTier: Tier?): Tier =
+    if (userFound) {
+        when {
+            hasPro -> Tier.PRO
+            hasAgent -> Tier.AGENT
+            else -> Tier.FREE
+        }
+    } else sessionTier ?: Tier.FREE

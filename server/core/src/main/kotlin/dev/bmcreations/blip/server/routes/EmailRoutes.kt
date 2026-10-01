@@ -51,7 +51,7 @@ fun Route.emailRoutes(
 
         // Determine tier for attachment handling
         val sessionId = inboxService.getSessionIdForInbox(inbox.id)
-        val tier = sessionId?.let { sessionService.getSessionById(it)?.tier } ?: Tier.FREE
+        val tier = inboxService.tierForInbox(inbox.id)
         val stripAttachments = !tier.attachmentsEnabled
 
         val summary = emailService.ingestEmail(inbox.id, request, stripAttachments, tier.maxAttachmentBytes)

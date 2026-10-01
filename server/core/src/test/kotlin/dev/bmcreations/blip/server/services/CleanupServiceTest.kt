@@ -24,79 +24,79 @@ class CleanupServiceTest {
 
     @Test
     fun `cleanup seals expired sniper inboxes`() = runTest {
-        coEvery { turso.execute(match { it.contains("DELETE FROM emails") && it.contains("received_at") }) } returns
+        coEvery { turso.execute(match { it.contains("DELETE FROM emails") && it.contains("received_at") }, any()) } returns
             TursoResult(emptyList(), emptyList(), 0, 0)
-        coEvery { turso.execute(match { it.contains("sniper_sealed = 1") }) } returns
+        coEvery { turso.execute(match { it.contains("sniper_sealed = 1") }, any()) } returns
             TursoResult(emptyList(), emptyList(), 2, 0)
-        coEvery { turso.execute(match { it.contains("DELETE FROM inboxes") }) } returns
+        coEvery { turso.execute(match { it.contains("DELETE FROM inboxes") }, any()) } returns
             TursoResult(emptyList(), emptyList(), 0, 0)
-        coEvery { turso.execute(match { it.contains("DELETE FROM sessions") }) } returns
+        coEvery { turso.execute(match { it.contains("DELETE FROM sessions") }, any()) } returns
             TursoResult(emptyList(), emptyList(), 0, 0)
 
         service.cleanup()
 
-        coVerify { turso.execute(match { it.contains("sniper_sealed = 1") && it.contains("sniper_closes_at") }) }
+        coVerify { turso.execute(match { it.contains("sniper_sealed = 1") && it.contains("sniper_closes_at") }, any()) }
     }
 
     @Test
     fun `cleanup deletes expired inboxes`() = runTest {
-        coEvery { turso.execute(match { it.contains("DELETE FROM emails") && it.contains("received_at") }) } returns
+        coEvery { turso.execute(match { it.contains("DELETE FROM emails") && it.contains("received_at") }, any()) } returns
             TursoResult(emptyList(), emptyList(), 0, 0)
-        coEvery { turso.execute(match { it.contains("sniper_sealed") }) } returns
+        coEvery { turso.execute(match { it.contains("sniper_sealed") }, any()) } returns
             TursoResult(emptyList(), emptyList(), 0, 0)
-        coEvery { turso.execute(match { it.contains("DELETE FROM inboxes") }) } returns
+        coEvery { turso.execute(match { it.contains("DELETE FROM inboxes") }, any()) } returns
             TursoResult(emptyList(), emptyList(), 5, 0)
-        coEvery { turso.execute(match { it.contains("DELETE FROM sessions") }) } returns
+        coEvery { turso.execute(match { it.contains("DELETE FROM sessions") }, any()) } returns
             TursoResult(emptyList(), emptyList(), 0, 0)
 
         service.cleanup()
 
-        coVerify { turso.execute(match { it.contains("DELETE FROM inboxes") && it.contains("expires_at") }) }
+        coVerify { turso.execute(match { it.contains("DELETE FROM inboxes") && it.contains("expires_at") }, any()) }
     }
 
     @Test
     fun `cleanup deletes expired sessions`() = runTest {
-        coEvery { turso.execute(match { it.contains("DELETE FROM emails") && it.contains("received_at") }) } returns
+        coEvery { turso.execute(match { it.contains("DELETE FROM emails") && it.contains("received_at") }, any()) } returns
             TursoResult(emptyList(), emptyList(), 0, 0)
-        coEvery { turso.execute(match { it.contains("sniper_sealed") }) } returns
+        coEvery { turso.execute(match { it.contains("sniper_sealed") }, any()) } returns
             TursoResult(emptyList(), emptyList(), 0, 0)
-        coEvery { turso.execute(match { it.contains("DELETE FROM inboxes") }) } returns
+        coEvery { turso.execute(match { it.contains("DELETE FROM inboxes") }, any()) } returns
             TursoResult(emptyList(), emptyList(), 0, 0)
-        coEvery { turso.execute(match { it.contains("DELETE FROM sessions") }) } returns
+        coEvery { turso.execute(match { it.contains("DELETE FROM sessions") }, any()) } returns
             TursoResult(emptyList(), emptyList(), 3, 0)
 
         service.cleanup()
 
-        coVerify { turso.execute(match { it.contains("DELETE FROM sessions") && it.contains("expires_at") }) }
+        coVerify { turso.execute(match { it.contains("DELETE FROM sessions") && it.contains("expires_at") }, any()) }
     }
 
     @Test
     fun `cleanup deletes emails past retention`() = runTest {
-        coEvery { turso.execute(match { it.contains("DELETE FROM emails") && it.contains("received_at") }) } returns
+        coEvery { turso.execute(match { it.contains("DELETE FROM emails") && it.contains("received_at") }, any()) } returns
             TursoResult(emptyList(), emptyList(), 7, 0)
-        coEvery { turso.execute(match { it.contains("sniper_sealed") }) } returns
+        coEvery { turso.execute(match { it.contains("sniper_sealed") }, any()) } returns
             TursoResult(emptyList(), emptyList(), 0, 0)
-        coEvery { turso.execute(match { it.contains("DELETE FROM inboxes") }) } returns
+        coEvery { turso.execute(match { it.contains("DELETE FROM inboxes") }, any()) } returns
             TursoResult(emptyList(), emptyList(), 0, 0)
-        coEvery { turso.execute(match { it.contains("DELETE FROM sessions") }) } returns
+        coEvery { turso.execute(match { it.contains("DELETE FROM sessions") }, any()) } returns
             TursoResult(emptyList(), emptyList(), 0, 0)
 
         service.cleanup()
 
-        coVerify { turso.execute(match { it.contains("DELETE FROM emails") && it.contains("s.tier") }) }
+        coVerify { turso.execute(match { it.contains("DELETE FROM emails") && it.contains("s.tier") }, any()) }
     }
 
     @Test
     fun `cleanup runs all four operations in order`() = runTest {
-        coEvery { turso.execute(any()) } returns TursoResult(emptyList(), emptyList(), 0, 0)
+        coEvery { turso.execute(any(), any()) } returns TursoResult(emptyList(), emptyList(), 0, 0)
 
         service.cleanup()
 
         coVerify(ordering = io.mockk.Ordering.ORDERED) {
-            turso.execute(match { it.contains("DELETE FROM emails") && it.contains("received_at") })
-            turso.execute(match { it.contains("sniper_sealed") })
-            turso.execute(match { it.contains("DELETE FROM inboxes") })
-            turso.execute(match { it.contains("DELETE FROM sessions") })
+            turso.execute(match { it.contains("DELETE FROM emails") && it.contains("received_at") }, any())
+            turso.execute(match { it.contains("sniper_sealed") }, any())
+            turso.execute(match { it.contains("DELETE FROM inboxes") }, any())
+            turso.execute(match { it.contains("DELETE FROM sessions") }, any())
         }
     }
 }
