@@ -107,7 +107,7 @@ class EmailRoutesTest {
         coEvery { inboxService.getInboxByAddress("swift-fox-42@useblip.email") } returns testInbox
         every { inboxService.isSniperWindowOpen(any()) } returns true
         coEvery { inboxService.getSessionIdForInbox("inbox-1") } returns "s1"
-        coEvery { sessionService.getSessionById("s1") } returns testSession
+        coEvery { inboxService.tierForInbox("inbox-1") } returns testSession.tier
         coEvery { emailService.ingestEmail("inbox-1", any(), any()) } returns testEmailSummary
 
         setup {
@@ -278,7 +278,7 @@ class EmailRoutesTest {
         coEvery { inboxService.getInboxByAddress("swift-fox-42@useblip.email") } returns testInbox
         every { inboxService.isSniperWindowOpen(any()) } returns true
         coEvery { inboxService.getSessionIdForInbox("inbox-1") } returns "s1"
-        coEvery { sessionService.getSessionById("s1") } returns testSession
+        coEvery { inboxService.tierForInbox("inbox-1") } returns testSession.tier
         coEvery { emailService.ingestEmail("inbox-1", any(), any()) } returns testEmailSummary
 
         setup {

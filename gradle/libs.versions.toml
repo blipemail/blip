@@ -33,6 +33,7 @@ clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version = "3.41.2.2" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 
 [plugins]
