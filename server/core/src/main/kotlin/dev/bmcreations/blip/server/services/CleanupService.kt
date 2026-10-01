@@ -7,6 +7,8 @@ import io.ktor.server.application.*
 import kotlinx.coroutines.*
 import org.slf4j.LoggerFactory
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 
 class CleanupService(
     private val turso: TursoClient,
@@ -20,6 +22,7 @@ class CleanupService(
         const val FREE_RETENTION_SECONDS = 86_400L
         const val PRO_RETENTION_SECONDS = 2_592_000L
         const val AGENT_RETENTION_SECONDS = 3_600L
+        const val FORWARDING_USAGE_RETENTION_DAYS = 7L
     }
 
     fun startScheduled(app: Application) {
@@ -114,6 +117,16 @@ class CleanupService(
         )
         if (sessionResult.affectedRowCount > 0) {
             logger.info("Cleaned up ${sessionResult.affectedRowCount} expired sessions")
+        }
+
+        // The forwarding cap only reads today's counter. Keep a week of history for debugging.
+        val usageCutoff = LocalDate.now(ZoneOffset.UTC).minusDays(FORWARDING_USAGE_RETENTION_DAYS).toString()
+        val usageResult = turso.execute(
+            "DELETE FROM forwarding_usage WHERE day < ?",
+            listOf(TursoValue.Text(usageCutoff))
+        )
+        if (usageResult.affectedRowCount > 0) {
+            logger.info("Cleaned up ${usageResult.affectedRowCount} forwarding usage rows")
         }
 
         // Retry failed webhook deliveries
