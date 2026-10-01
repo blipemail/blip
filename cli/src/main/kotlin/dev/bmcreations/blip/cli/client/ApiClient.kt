@@ -25,13 +25,21 @@ class ApiClient {
     private suspend fun ensureToken(): String {
         val existing = ConfigManager.getToken()
         if (existing != null) {
-            // Validate
-            try {
-                val resp = client.get("$baseUrl/v1/sessions/me") {
+            // Only a 401 proves the token is invalid. Any other failure (5xx, 429,
+            // network) must not replace the saved token, or a transient outage
+            // would log the user out of their account.
+            val resp = try {
+                client.get("$baseUrl/v1/sessions/me") {
                     header("Authorization", "Bearer $existing")
                 }
-                if (resp.status == HttpStatusCode.OK) return existing
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                throw RuntimeException("Blip API unavailable, try again (could not reach $baseUrl)")
+            }
+            when {
+                resp.status == HttpStatusCode.OK -> return existing
+                resp.status != HttpStatusCode.Unauthorized ->
+                    throw RuntimeException("Blip API unavailable, try again (HTTP ${resp.status.value})")
+            }
         }
 
         // Create new session
@@ -41,6 +49,9 @@ class ApiClient {
             }
         } catch (e: Exception) {
             throw RuntimeException("Cannot connect to $baseUrl — is the server running?")
+        }
+        if (!resp.status.isSuccess()) {
+            throw RuntimeException("Blip API unavailable, try again (HTTP ${resp.status.value})")
         }
         val result = resp.body<CreateSessionResponse>()
         ConfigManager.saveToken(result.token)
@@ -155,6 +166,9 @@ class ApiClient {
         }
     }
 
+    // Note: the session token is passed as a query parameter because browser
+    // EventSource cannot set an Authorization header. It can end up in server
+    // and proxy access logs.
     fun getSseUrl(inboxId: String): String {
         val token = ConfigManager.getToken() ?: ""
         return "$baseUrl/v1/inboxes/$inboxId/sse?token=$token"

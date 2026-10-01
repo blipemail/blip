@@ -17,6 +17,8 @@ class OpenCommand : CliktCommand(name = "open") {
         }
 
         val frontendUrl = System.getenv("BLIP_FRONTEND_URL") ?: "https://app.useblip.email"
+        // The token travels in the URL (the web app strips it after reading it), so it
+        // can land in browser history and the printed fallback URL below.
         val url = "$frontendUrl/app?token=$token"
 
         echo("Opening Blip in browser...")
