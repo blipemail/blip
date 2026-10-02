@@ -216,6 +216,10 @@ object Migrations {
         UPDATE forwarding_rules SET user_id = (SELECT s.user_id FROM sessions s WHERE s.id = forwarding_rules.session_id)
         WHERE user_id IS NULL AND session_id IN (SELECT id FROM sessions WHERE user_id IS NOT NULL)
         """.trimIndent(),
+
+        // Activation timestamp: set once, when the user creates their first inbox. Re-runs hit
+        // "duplicate column", which run() ignores for ALTERs.
+        "ALTER TABLE users ADD COLUMN first_inbox_at TEXT",
     )
 
     fun run(turso: TursoClient) = runBlocking {
