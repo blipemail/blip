@@ -33,7 +33,8 @@ class WebhookRoutesTest {
         id = "s2",
         token = "pro-token",
         tier = Tier.PRO,
-        expiresAt = "2099-01-01T00:00:00Z"
+        expiresAt = "2099-01-01T00:00:00Z",
+        userId = "u2",
     )
 
     private val testWebhook = Webhook(
@@ -74,7 +75,7 @@ class WebhookRoutesTest {
         val sessionService = mockk<SessionService>(relaxed = true)
         val webhookService = mockk<WebhookService>(relaxed = true)
         coEvery { sessionService.extractSession("Bearer pro-token") } returns proSession
-        coEvery { webhookService.createWebhook("s2", any()) } returns testWebhook
+        coEvery { webhookService.createWebhook("s2", any(), "u2") } returns testWebhook
 
         val inboxService = mockk<InboxService>(relaxed = true)
         setup { webhookRoutes(webhookService, sessionService, inboxService) }

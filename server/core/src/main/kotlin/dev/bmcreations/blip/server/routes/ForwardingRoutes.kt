@@ -27,7 +27,7 @@ fun Route.forwardingRoutes(
         require(inboxService.ownsInbox(inboxId, session.id, session.userId)) { "Access denied" }
 
         val req = call.receive<CreateForwardingRuleRequest>()
-        val rule = forwardingService.createRule(inboxId, session.id, req.forwardToEmail, session.tier.forwardingRules)
+        val rule = forwardingService.createRule(inboxId, session.id, req.forwardToEmail, session.tier.forwardingRules, session.userId)
         call.respond(HttpStatusCode.Created, CreateForwardingRuleResponse(rule))
     }
 

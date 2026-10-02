@@ -33,7 +33,8 @@ class ForwardingRoutesTest {
         id = "s2",
         token = "pro-token",
         tier = Tier.PRO,
-        expiresAt = "2099-01-01T00:00:00Z"
+        expiresAt = "2099-01-01T00:00:00Z",
+        userId = "u2",
     )
 
     private val testRule = ForwardingRule(
@@ -75,7 +76,7 @@ class ForwardingRoutesTest {
 
         coEvery { sessionService.extractSession("Bearer pro-token") } returns proSession
         coEvery { inboxService.ownsInbox("inbox-1", "s2", any()) } returns true
-        coEvery { forwardingService.createRule("inbox-1", "s2", "forward@example.com", 1) } returns testRule
+        coEvery { forwardingService.createRule("inbox-1", "s2", "forward@example.com", 1, "u2") } returns testRule
 
         setup { forwardingRoutes(forwardingService, sessionService, inboxService) }
 

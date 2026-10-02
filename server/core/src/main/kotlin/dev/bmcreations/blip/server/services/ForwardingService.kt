@@ -75,6 +75,7 @@ class ForwardingService(
         sessionId: String,
         forwardToEmail: String,
         maxRules: Int,
+        userId: String? = null,
     ): ForwardingRule {
         require(EMAIL_REGEX.matches(forwardToEmail)) { "Invalid email address" }
 
@@ -91,13 +92,14 @@ class ForwardingService(
         val now = Instant.now().toString()
 
         turso.execute(
-            "INSERT INTO forwarding_rules (id, inbox_id, session_id, forward_to_email, created_at) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO forwarding_rules (id, inbox_id, session_id, forward_to_email, created_at, user_id) VALUES (?, ?, ?, ?, ?, ?)",
             listOf(
                 TursoValue.Text(id),
                 TursoValue.Text(inboxId),
                 TursoValue.Text(sessionId),
                 TursoValue.Text(forwardToEmail),
                 TursoValue.Text(now),
+                if (userId != null) TursoValue.Text(userId) else TursoValue.Null,
             )
         )
 
