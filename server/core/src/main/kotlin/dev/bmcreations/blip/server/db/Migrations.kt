@@ -198,6 +198,13 @@ object Migrations {
             PRIMARY KEY (owner_key, day)
         )
         """.trimIndent(),
+
+        // User ownership for webhooks and forwarding rules, so they're reachable from any of the
+        // user's sessions (docs/plans/user-owned-resources.md in blip-cloud). No FK, like inboxes.user_id.
+        "ALTER TABLE webhooks ADD COLUMN user_id TEXT",
+        "CREATE INDEX IF NOT EXISTS idx_webhooks_user ON webhooks(user_id)",
+        "ALTER TABLE forwarding_rules ADD COLUMN user_id TEXT",
+        "CREATE INDEX IF NOT EXISTS idx_forwarding_rules_user ON forwarding_rules(user_id)",
     )
 
     fun run(turso: TursoClient) = runBlocking {
