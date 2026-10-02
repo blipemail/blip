@@ -12,6 +12,7 @@ import kotlinx.coroutines.sync.withLock
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import org.slf4j.LoggerFactory
 
 class InboxService(
     private val turso: TursoClient,
@@ -20,6 +21,7 @@ class InboxService(
     private val sseManager: SseManager? = null,
     private val encryptionService: EncryptionService = EncryptionService(),
 ) {
+    private val logger = LoggerFactory.getLogger(InboxService::class.java)
     private val inboxCreationLocks = ConcurrentHashMap<String, Mutex>()
 
     companion object {
@@ -174,6 +176,17 @@ class InboxService(
                 """.trimIndent(),
                 args,
             )
+        }
+
+        if (userId != null) {
+            try {
+                turso.execute(
+                    "UPDATE users SET first_inbox_at = COALESCE(first_inbox_at, ?) WHERE id = ?",
+                    listOf(TursoValue.Text(now.toString()), TursoValue.Text(userId)),
+                )
+            } catch (e: Exception) {
+                logger.warn("Failed to record first_inbox_at for user {}: {}", userId, e.message)
+            }
         }
 
         return Inbox(
