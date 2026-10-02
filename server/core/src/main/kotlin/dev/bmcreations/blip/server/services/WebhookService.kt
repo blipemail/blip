@@ -152,7 +152,7 @@ class WebhookService(
         if (row["session_id"] != sessionId) throw ForbiddenException("Access denied")
     }
 
-    suspend fun createWebhook(sessionId: String, request: CreateWebhookRequest): Webhook {
+    suspend fun createWebhook(sessionId: String, request: CreateWebhookRequest, userId: String? = null): Webhook {
         validateWebhookUrl(request.url)
         assertWebhookCapAllowsNew(sessionId)
         val id = UUID.randomUUID().toString()
@@ -161,7 +161,7 @@ class WebhookService(
 
         val inboxId = request.inboxId
         turso.execute(
-            "INSERT INTO webhooks (id, session_id, inbox_id, url, secret, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO webhooks (id, session_id, inbox_id, url, secret, created_at, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
             listOf(
                 TursoValue.Text(id),
                 TursoValue.Text(sessionId),
@@ -169,6 +169,7 @@ class WebhookService(
                 TursoValue.Text(request.url),
                 TursoValue.Text(secret),
                 TursoValue.Text(now),
+                if (userId != null) TursoValue.Text(userId) else TursoValue.Null,
             )
         )
 

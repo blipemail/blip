@@ -26,7 +26,7 @@ fun Route.webhookRoutes(
         if (request.inboxId != null) {
             require(inboxService.ownsInbox(request.inboxId!!, session.id, session.userId)) { "Access denied" }
         }
-        val webhook = webhookService.createWebhook(session.id, request)
+        val webhook = webhookService.createWebhook(session.id, request, session.userId)
         call.respond(HttpStatusCode.Created, CreateWebhookResponse(webhook))
     }
 
