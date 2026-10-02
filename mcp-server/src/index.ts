@@ -13,7 +13,7 @@ const API_KEY = process.env.BLIP_API_KEY || "";
 
 if (!API_KEY) {
   console.error(
-    "BLIP_API_KEY is required. Create one at https://useblip.email/app"
+    "BLIP_API_KEY is required. Create one at https://app.useblip.email/tokens"
   );
   process.exit(1);
 }
@@ -63,9 +63,9 @@ function describeError(
   retryAfter?: number
 ): string {
   const upgrade =
-    "This feature needs a higher Blip plan. Upgrade at https://useblip.email/app.";
+    "This feature needs a higher Blip plan. Upgrade at https://app.useblip.email/billing.";
   const invalidKey =
-    "Invalid or expired API key. Check BLIP_API_KEY, or create a new key at https://useblip.email/app.";
+    "Invalid or expired API key. Check BLIP_API_KEY, or create a new key at https://app.useblip.email/tokens.";
   switch (status) {
     case 401:
       return invalidKey;
@@ -134,11 +134,11 @@ server.tool(
     slug: z
       .string()
       .optional()
-      .describe("Custom address slug (e.g. 'mytest' for mytest@useblip.email)"),
+      .describe("Custom address slug (e.g. 'mytest' for mytest@bl1p.dev)"),
     domain: z
       .string()
       .optional()
-      .describe("Email domain (defaults to useblip.email)"),
+      .describe("Email domain (defaults to bl1p.dev)"),
     ttl_minutes: z
       .number()
       .optional()

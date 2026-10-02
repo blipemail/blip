@@ -45,8 +45,9 @@ BLIP_API_KEY=blip_ak_... npx @useblip/email
 ## Getting an API key
 
 1. Sign in at [app.useblip.email](https://app.useblip.email)
-2. Subscribe to the **Agent** tier
-3. Create an API key from the dashboard
+2. Open [app.useblip.email/tokens](https://app.useblip.email/tokens) and create an API key
+
+Any signed-in Blip account can create one key. The Agent tier gives unlimited keys.
 
 ## Tools
 
