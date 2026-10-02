@@ -205,6 +205,17 @@ object Migrations {
         "CREATE INDEX IF NOT EXISTS idx_webhooks_user ON webhooks(user_id)",
         "ALTER TABLE forwarding_rules ADD COLUMN user_id TEXT",
         "CREATE INDEX IF NOT EXISTS idx_forwarding_rules_user ON forwarding_rules(user_id)",
+
+        // Backfill user_id from the owning session. Runs on every boot; only touches rows whose
+        // session is signed in and that don't have a user_id yet, so it's a no-op once caught up.
+        """
+        UPDATE webhooks SET user_id = (SELECT s.user_id FROM sessions s WHERE s.id = webhooks.session_id)
+        WHERE user_id IS NULL AND session_id IN (SELECT id FROM sessions WHERE user_id IS NOT NULL)
+        """.trimIndent(),
+        """
+        UPDATE forwarding_rules SET user_id = (SELECT s.user_id FROM sessions s WHERE s.id = forwarding_rules.session_id)
+        WHERE user_id IS NULL AND session_id IN (SELECT id FROM sessions WHERE user_id IS NOT NULL)
+        """.trimIndent(),
     )
 
     fun run(turso: TursoClient) = runBlocking {
