@@ -205,7 +205,7 @@ class ForwardingRoutesTest {
         val inboxService = mockk<InboxService>(relaxed = true)
 
         coEvery { sessionService.extractSession("Bearer pro-token") } returns proSession
-        coJustRun { forwardingService.deleteRule("rule-1", "s2") }
+        coJustRun { forwardingService.deleteRule("rule-1", "s2", "u2") }
 
         setup { forwardingRoutes(forwardingService, sessionService, inboxService) }
 
@@ -214,7 +214,7 @@ class ForwardingRoutesTest {
         }
 
         assertEquals(HttpStatusCode.NoContent, response.status)
-        coVerify { forwardingService.deleteRule("rule-1", "s2") }
+        coVerify { forwardingService.deleteRule("rule-1", "s2", "u2") }
     }
 
     @Test
@@ -224,7 +224,7 @@ class ForwardingRoutesTest {
         val inboxService = mockk<InboxService>(relaxed = true)
 
         coEvery { sessionService.extractSession("Bearer pro-token") } returns proSession
-        coEvery { forwardingService.deleteRule("rule-missing", "s2") } throws NotFoundException("Forwarding rule not found")
+        coEvery { forwardingService.deleteRule("rule-missing", "s2", "u2") } throws NotFoundException("Forwarding rule not found")
 
         setup { forwardingRoutes(forwardingService, sessionService, inboxService) }
 
@@ -242,7 +242,7 @@ class ForwardingRoutesTest {
         val inboxService = mockk<InboxService>(relaxed = true)
 
         coEvery { sessionService.extractSession("Bearer pro-token") } returns proSession
-        coEvery { forwardingService.deleteRule("rule-1", "s2") } throws ForbiddenException("Access denied")
+        coEvery { forwardingService.deleteRule("rule-1", "s2", "u2") } throws ForbiddenException("Access denied")
 
         setup { forwardingRoutes(forwardingService, sessionService, inboxService) }
 

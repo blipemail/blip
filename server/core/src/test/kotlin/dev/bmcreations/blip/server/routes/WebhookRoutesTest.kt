@@ -137,7 +137,7 @@ class WebhookRoutesTest {
         val sessionService = mockk<SessionService>(relaxed = true)
         val webhookService = mockk<WebhookService>(relaxed = true)
         coEvery { sessionService.extractSession("Bearer pro-token") } returns proSession
-        coEvery { webhookService.listWebhooks("s2") } returns listOf(testWebhook)
+        coEvery { webhookService.listWebhooks("s2", "u2") } returns listOf(testWebhook)
 
         val inboxService = mockk<InboxService>(relaxed = true)
         setup { webhookRoutes(webhookService, sessionService, inboxService) }
@@ -159,7 +159,7 @@ class WebhookRoutesTest {
         val sessionService = mockk<SessionService>(relaxed = true)
         val webhookService = mockk<WebhookService>(relaxed = true)
         coEvery { sessionService.extractSession("Bearer pro-token") } returns proSession
-        coJustRun { webhookService.deleteWebhook("wh-1", "s2") }
+        coJustRun { webhookService.deleteWebhook("wh-1", "s2", "u2") }
 
         val inboxService = mockk<InboxService>(relaxed = true)
         setup { webhookRoutes(webhookService, sessionService, inboxService) }
@@ -169,7 +169,7 @@ class WebhookRoutesTest {
         }
 
         assertEquals(HttpStatusCode.NoContent, response.status)
-        coVerify { webhookService.deleteWebhook("wh-1", "s2") }
+        coVerify { webhookService.deleteWebhook("wh-1", "s2", "u2") }
     }
 
     @Test
@@ -177,7 +177,7 @@ class WebhookRoutesTest {
         val sessionService = mockk<SessionService>(relaxed = true)
         val webhookService = mockk<WebhookService>(relaxed = true)
         coEvery { sessionService.extractSession("Bearer pro-token") } returns proSession
-        coEvery { webhookService.deleteWebhook("wh-missing", "s2") } throws NotFoundException("Webhook not found")
+        coEvery { webhookService.deleteWebhook("wh-missing", "s2", "u2") } throws NotFoundException("Webhook not found")
 
         val inboxService = mockk<InboxService>(relaxed = true)
         setup { webhookRoutes(webhookService, sessionService, inboxService) }
@@ -196,7 +196,7 @@ class WebhookRoutesTest {
         val sessionService = mockk<SessionService>(relaxed = true)
         val webhookService = mockk<WebhookService>(relaxed = true)
         coEvery { sessionService.extractSession("Bearer pro-token") } returns proSession
-        coJustRun { webhookService.toggleWebhook("wh-1", "s2", false) }
+        coJustRun { webhookService.toggleWebhook("wh-1", "s2", false, "u2") }
 
         val inboxService = mockk<InboxService>(relaxed = true)
         setup { webhookRoutes(webhookService, sessionService, inboxService) }
@@ -210,7 +210,7 @@ class WebhookRoutesTest {
         assertEquals(HttpStatusCode.OK, response.status)
         val body = response.bodyAsText()
         assertTrue(body.contains("false"), "Response should contain enabled=false")
-        coVerify { webhookService.toggleWebhook("wh-1", "s2", false) }
+        coVerify { webhookService.toggleWebhook("wh-1", "s2", false, "u2") }
     }
 
     // --- GET /v1/webhooks/{id}/deliveries ---
@@ -249,8 +249,8 @@ class WebhookRoutesTest {
     @Test
     fun `GET deliveries returns 403 for a webhook owned by another session`() = testApplication {
         val turso = mockk<dev.bmcreations.blip.server.db.TursoClient>()
-        coEvery { turso.execute(match { it.contains("SELECT session_id FROM webhooks") }, any()) } returns
-            dev.bmcreations.blip.server.db.TursoResult(listOf("session_id"), listOf(listOf("someone-else")), 0, 0)
+        coEvery { turso.execute(match { it.contains("SELECT session_id, user_id FROM webhooks") }, any()) } returns
+            dev.bmcreations.blip.server.db.TursoResult(listOf("session_id", "user_id"), listOf(listOf("someone-else", "someone-else-user")), 0, 0)
         val webhookService = WebhookService(turso)
         val sessionService = mockk<SessionService>(relaxed = true)
         coEvery { sessionService.extractSession("Bearer pro-token") } returns proSession
@@ -279,8 +279,8 @@ class WebhookRoutesTest {
     @Test
     fun `GET deliveries returns the log for the owner`() = testApplication {
         val turso = mockk<dev.bmcreations.blip.server.db.TursoClient>()
-        coEvery { turso.execute(match { it.contains("SELECT session_id FROM webhooks") }, any()) } returns
-            dev.bmcreations.blip.server.db.TursoResult(listOf("session_id"), listOf(listOf("s2")), 0, 0)
+        coEvery { turso.execute(match { it.contains("SELECT session_id, user_id FROM webhooks") }, any()) } returns
+            dev.bmcreations.blip.server.db.TursoResult(listOf("session_id", "user_id"), listOf(listOf("s2", null)), 0, 0)
         coEvery { turso.execute(match { it.contains("FROM webhook_deliveries") }, any()) } returns
             dev.bmcreations.blip.server.db.TursoResult(emptyList(), emptyList(), 0, 0)
         val sessionService = mockk<SessionService>(relaxed = true)

@@ -126,13 +126,14 @@ class ForwardingService(
         }
     }
 
-    suspend fun deleteRule(ruleId: String, sessionId: String) {
+    suspend fun deleteRule(ruleId: String, sessionId: String, userId: String? = null) {
         val row = turso.execute(
-            "SELECT session_id FROM forwarding_rules WHERE id = ?",
+            "SELECT session_id, user_id FROM forwarding_rules WHERE id = ?",
             listOf(TursoValue.Text(ruleId))
         ).firstOrNull() ?: throw NotFoundException("Forwarding rule not found")
 
-        if (row["session_id"] != sessionId) {
+        val ownedByUser = userId != null && row["user_id"] == userId
+        if (row["session_id"] != sessionId && !ownedByUser) {
             throw ForbiddenException("Access denied")
         }
 
