@@ -32,14 +32,14 @@ fun Route.webhookRoutes(
 
     get("/v1/webhooks") {
         val session = sessionService.extractSession(call.request.headers["Authorization"])
-        val webhooks = webhookService.listWebhooks(session.id)
+        val webhooks = webhookService.listWebhooks(session.id, session.userId)
         call.respond(webhooks)
     }
 
     delete("/v1/webhooks/{id}") {
         val session = sessionService.extractSession(call.request.headers["Authorization"])
         val webhookId = call.parameters["id"]!!
-        webhookService.deleteWebhook(webhookId, session.id)
+        webhookService.deleteWebhook(webhookId, session.id, session.userId)
         call.respond(HttpStatusCode.NoContent)
     }
 
@@ -48,14 +48,14 @@ fun Route.webhookRoutes(
         val webhookId = call.parameters["id"]!!
         val body = call.receive<Map<String, Boolean>>()
         val enabled = body["enabled"] ?: throw IllegalArgumentException("Missing 'enabled' field")
-        webhookService.toggleWebhook(webhookId, session.id, enabled)
+        webhookService.toggleWebhook(webhookId, session.id, enabled, session.userId)
         call.respond(HttpStatusCode.OK, mapOf("enabled" to enabled))
     }
 
     get("/v1/webhooks/{id}/deliveries") {
         val session = sessionService.extractSession(call.request.headers["Authorization"])
         val webhookId = call.parameters["id"]!!
-        webhookService.assertOwnsWebhook(webhookId, session.id)
+        webhookService.assertOwnsWebhook(webhookId, session.id, session.userId)
         val deliveries = webhookService.getDeliveryLog(webhookId)
         call.respond(deliveries)
     }

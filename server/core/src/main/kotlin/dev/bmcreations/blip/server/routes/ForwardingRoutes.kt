@@ -43,7 +43,7 @@ fun Route.forwardingRoutes(
     delete("/v1/forwarding/{id}") {
         val session = sessionService.extractSession(call.request.headers["Authorization"])
         val ruleId = call.parameters["id"]!!
-        forwardingService.deleteRule(ruleId, session.id)
+        forwardingService.deleteRule(ruleId, session.id, session.userId)
         call.respond(HttpStatusCode.NoContent)
     }
 }

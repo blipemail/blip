@@ -143,13 +143,14 @@ class WebhookService(
         }
     }
 
-    /** Throws if the webhook does not exist or belongs to another session. */
-    suspend fun assertOwnsWebhook(webhookId: String, sessionId: String) {
+    /** Throws if the webhook does not exist or belongs to neither this session nor this user. */
+    suspend fun assertOwnsWebhook(webhookId: String, sessionId: String, userId: String? = null) {
         val row = turso.execute(
-            "SELECT session_id FROM webhooks WHERE id = ?",
+            "SELECT session_id, user_id FROM webhooks WHERE id = ?",
             listOf(TursoValue.Text(webhookId))
         ).firstOrNull() ?: throw NotFoundException("Webhook not found")
-        if (row["session_id"] != sessionId) throw ForbiddenException("Access denied")
+        val ownedByUser = userId != null && row["user_id"] == userId
+        if (row["session_id"] != sessionId && !ownedByUser) throw ForbiddenException("Access denied")
     }
 
     suspend fun createWebhook(sessionId: String, request: CreateWebhookRequest, userId: String? = null): Webhook {
@@ -183,23 +184,23 @@ class WebhookService(
         )
     }
 
-    suspend fun listWebhooks(sessionId: String): List<Webhook> {
-        val result = turso.execute(
-            "SELECT id, url, secret, inbox_id, created_at, enabled FROM webhooks WHERE session_id = ?",
-            listOf(TursoValue.Text(sessionId))
-        )
+    suspend fun listWebhooks(sessionId: String, userId: String? = null): List<Webhook> {
+        val result = if (userId != null) {
+            turso.execute(
+                "SELECT id, url, secret, inbox_id, created_at, enabled FROM webhooks WHERE user_id = ? OR session_id = ?",
+                listOf(TursoValue.Text(userId), TursoValue.Text(sessionId))
+            )
+        } else {
+            turso.execute(
+                "SELECT id, url, secret, inbox_id, created_at, enabled FROM webhooks WHERE session_id = ?",
+                listOf(TursoValue.Text(sessionId))
+            )
+        }
         return result.toMaps().map { it.toWebhook() }
     }
 
-    suspend fun deleteWebhook(webhookId: String, sessionId: String) {
-        val row = turso.execute(
-            "SELECT session_id FROM webhooks WHERE id = ?",
-            listOf(TursoValue.Text(webhookId))
-        ).firstOrNull() ?: throw NotFoundException("Webhook not found")
-
-        if (row["session_id"] != sessionId) {
-            throw ForbiddenException("Access denied")
-        }
+    suspend fun deleteWebhook(webhookId: String, sessionId: String, userId: String? = null) {
+        assertOwnsWebhook(webhookId, sessionId, userId)
 
         turso.execute(
             "DELETE FROM webhooks WHERE id = ?",
@@ -207,26 +208,23 @@ class WebhookService(
         )
     }
 
+    /**
+     * Webhooks set on this inbox fire whichever of the owner's sessions created them. Webhooks with
+     * no inbox only fire for inboxes in their own session ([sessionId] is the inbox's session).
+     */
     suspend fun getWebhooksForInbox(inboxId: String, sessionId: String): List<Webhook> {
         val result = turso.execute(
             """
             SELECT id, url, secret, inbox_id, created_at, enabled FROM webhooks
-            WHERE session_id = ? AND enabled = 1 AND (inbox_id IS NULL OR inbox_id = ?)
+            WHERE enabled = 1 AND (inbox_id = ? OR (inbox_id IS NULL AND session_id = ?))
             """.trimIndent(),
-            listOf(TursoValue.Text(sessionId), TursoValue.Text(inboxId))
+            listOf(TursoValue.Text(inboxId), TursoValue.Text(sessionId))
         )
         return result.toMaps().map { it.toWebhook() }
     }
 
-    suspend fun toggleWebhook(webhookId: String, sessionId: String, enabled: Boolean) {
-        val row = turso.execute(
-            "SELECT session_id FROM webhooks WHERE id = ?",
-            listOf(TursoValue.Text(webhookId))
-        ).firstOrNull() ?: throw NotFoundException("Webhook not found")
-
-        if (row["session_id"] != sessionId) {
-            throw ForbiddenException("Access denied")
-        }
+    suspend fun toggleWebhook(webhookId: String, sessionId: String, enabled: Boolean, userId: String? = null) {
+        assertOwnsWebhook(webhookId, sessionId, userId)
 
         turso.execute(
             "UPDATE webhooks SET enabled = ? WHERE id = ?",
